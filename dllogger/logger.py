@@ -263,7 +263,7 @@ class _ParentStdOutBackend(object):
             msg = key
         else:
             str_json = json.dumps(value)
-            msg = f'{key}: {str_json:.5f}'
+            msg = f'{key}: {str_json}'
 
         call_site = get_caller(root_dir=self.root_dir)
         now = time.time()

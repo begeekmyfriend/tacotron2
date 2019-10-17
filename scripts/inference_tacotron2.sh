@@ -1,1 +1,1 @@
-CUDA_VISIBLE_DEVICES=2 python inference.py
+CUDA_VISIBLE_DEVICES=0 python inference.py

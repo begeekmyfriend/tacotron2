@@ -92,8 +92,8 @@ def parse_args(parser):
     # dataset parameters
     dataset = parser.add_argument_group('dataset parameters')
     dataset.add_argument('--load-mel-from-disk', action='store_true', help='Loads mel spectrograms from disk instead of computing them on the fly')
-    dataset.add_argument('--training-files', default='filelists/xiaoya_audio_text_train_filelist.txt', type=str, help='Path to training filelist')
-    dataset.add_argument('--validation-files', default='filelists/xiaoya_audio_text_val_filelist.txt', type=str, help='Path to validation filelist')
+    dataset.add_argument('--training-files', default='filelists/ljs_audio_text_train_filelist.txt', type=str, help='Path to training filelist')
+    dataset.add_argument('--validation-files', default='filelists/ljs_audio_text_val_filelist.txt', type=str, help='Path to validation filelist')
     dataset.add_argument('--text-cleaners', nargs='*', default=['basic_cleaners'], type=str, help='Type of text cleaners for input text')
 
     # audio parameters
@@ -264,7 +264,7 @@ def main():
                               batch_size=args.batch_size, pin_memory=False,
                               drop_last=True, collate_fn=collate_fn)
 
-    valset = TextMelLoader(args, args.validation_files)
+    # valset = TextMelLoader(args, args.validation_files)
 
     model.train()
 
