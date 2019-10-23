@@ -107,7 +107,7 @@ def get_tacotron2_model(args, is_training=True):
         # audio
         n_mel_channels=args.n_mel_channels,
         # symbols
-        n_symbols=args.n_symbols,
+        n_symbols=args.n_symbols * len(args.training_anchor_dirs),
         symbols_embedding_dim=args.symbols_embedding_dim,
         # encoder
         encoder_kernel_size=args.encoder_kernel_size,

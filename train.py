@@ -44,7 +44,7 @@ from tacotron2.loader import parse_tacotron2_args
 from tacotron2.loader import get_tacotron2_model
 from tacotron2.loss_function import Tacotron2Loss
 from tacotron2.data_function import TextMelCollate
-from tacotron2.data_function import TextMelLoader
+from tacotron2.data_function import TextMelDataset
 from tacotron2.data_function import batch_to_gpu
 from dllogger.logger import LOGGER
 import dllogger.logger as dllg
@@ -63,7 +63,7 @@ def parse_args(parser):
     """
 
     parser.add_argument('-o', '--output_directory', type=str, default='logs', required=True, help='Directory to save checkpoints')
-    parser.add_argument('-d', '--dataset-path', type=str, default='training_data/mels', help='Path to dataset')
+    parser.add_argument('-d', '--dataset-path', type=str, default='filelists', help='Path to dataset')
     parser.add_argument('--log-file', type=str, default='nvlog.json', help='Filename for logging')
     parser.add_argument('--latest-checkpoint-file', type=str, default='checkpoint_latest.pt', help='Store the latest checkpoint in each epoch')
     parser.add_argument('--phrase-path', type=str, default=None, help='Path to phrase sequence file used for sample generation')
@@ -92,8 +92,8 @@ def parse_args(parser):
     # dataset parameters
     dataset = parser.add_argument_group('dataset parameters')
     dataset.add_argument('--load-mel-from-disk', action='store_true', help='Loads mel spectrograms from disk instead of computing them on the fly')
-    dataset.add_argument('--training-files', default='filelists/ljs_audio_text_train_filelist.txt', type=str, help='Path to training filelist')
-    dataset.add_argument('--validation-files', default='filelists/ljs_audio_text_val_filelist.txt', type=str, help='Path to validation filelist')
+    dataset.add_argument('--training-anchor-dirs', default=['ljs_mel_text_train_filelist.txt'], type=str, nargs='*', help='Path to training filelist')
+    dataset.add_argument('--validation-anchor-dirs', default=['ljs_mel_text_val_filelist.txt'], type=str, nargs='*', help='Path to validation filelist')
     dataset.add_argument('--text-cleaners', nargs='*', default=['basic_cleaners'], type=str, help='Type of text cleaners for input text')
 
     # audio parameters
@@ -107,7 +107,7 @@ def parse_args(parser):
     audio.add_argument('--mel-fmax', default=7600.0, type=float, help='Maximum mel frequency')
 
     distributed = parser.add_argument_group('distributed setup')
-    # distributed.add_argument('--distributed-run', default=True, type=bool, help='enable distributed run')
+    distributed.add_argument('--distributed-run', default=False, type=bool, help='enable distributed run')
     distributed.add_argument('--rank', default=0, type=int, help='Rank of the process, do not set! Done by multiproc module')
     distributed.add_argument('--world-size', default=1, type=int, help='Number of processes, do not set! Done by multiproc module')
     distributed.add_argument('--dist-url', type=str, default='tcp://localhost:23456', help='Url used to set up distributed training')
@@ -145,7 +145,6 @@ def save_eval(model, filepath, args):
         with torch.no_grad():
             model.eval()
             mel = model.infer(phrase.cuda())[0].cpu()
-            print(mel.size())
             model.train()
 
     # audio = audio[0].numpy()
@@ -167,12 +166,12 @@ def evaluating(model):
             model.train()
 
 
-def validate(model, criterion, valset, iteration, collate_fn, distributed_run, args):
+def validate(model, criterion, valate_dataset, iteration, collate_fn, distributed_run, args):
     """Handles all the validation scoring and printing"""
     with evaluating(model), torch.no_grad():
-        val_loader = DataLoader(valset, num_workers=1, shuffle=False,
-                                batch_size=args.batch_size, pin_memory=False,
-                                collate_fn=collate_fn)
+        val_loader = DataLoader(valate_dataset, num_workers=1, shuffle=False,
+                                batch_size=args.batch_size//len(args.validation_anchor_dirs),
+                                pin_memory=False, collate_fn=collate_fn)
 
         val_loss = 0.0
         for i, batch in enumerate(val_loader):
@@ -259,12 +258,11 @@ def main():
     criterion = Tacotron2Loss()
 
     collate_fn = TextMelCollate(args)
-    trainset = TextMelLoader(args, args.training_files)
-    train_loader = DataLoader(trainset, num_workers=1, shuffle=False,
-                              batch_size=args.batch_size, pin_memory=False,
-                              drop_last=True, collate_fn=collate_fn)
-
-    # valset = TextMelLoader(args, args.validation_files)
+    train_dataset = TextMelDataset(args, args.training_anchor_dirs)
+    train_loader = DataLoader(train_dataset, num_workers=1, shuffle=False,
+                              batch_size=args.batch_size//len(args.training_anchor_dirs),
+                              pin_memory=False, drop_last=True, collate_fn=collate_fn)
+    # valate_dataset = TextMelDataset(args, args.validation_anchor_dirs)
 
     model.train()
 
@@ -355,7 +353,7 @@ def main():
 
         LOGGER.log(key=tags.EVAL_START, value=epoch)
 
-        # validate(model, criterion, valset, iteration, collate_fn, distributed_run, args)
+        # validate(model, criterion, valate_dataset, iteration, collate_fn, distributed_run, args)
 
         LOGGER.log(key=tags.EVAL_STOP, value=epoch)
 

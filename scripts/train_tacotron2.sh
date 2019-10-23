@@ -1,2 +1,1 @@
-CUDA_VISIBLE_DEVICES=0 python train.py -o logs --init-lr 1e-3 --final-lr 1e-5 --epochs 500 -bs 32 --weight-decay 1e-6 --grad-clip-thresh 1.0 --cudnn-enabled --log-file nvlog.json
-# CUDA_VISIBLE_DEVICES=0 nohup python train.py -o logs --init-lr 1e-3 --final-lr 1e-5 --epochs 500 -bs 32 --weight-decay 1e-6 --grad-clip-thresh 1.0 --cudnn-enabled --log-file nvlog.json > leoma.out &
+CUDA_VISIBLE_DEVICES=0 python train.py -o logs --init-lr 1e-3 --final-lr 1e-5 --epochs 500 -bs 32 --weight-decay 1e-6 --cudnn-enabled --log-file nvlog.json --dataset-path training_data --training-anchor-dirs xmly_fanfanli_22050 xmly_xiaoya_22050 xmly_jinhua_22050 xmly_qiuyixin_22050'

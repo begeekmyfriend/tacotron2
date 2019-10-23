@@ -5,7 +5,7 @@ import numpy as np
 from datasets import audio
 
 
-def build_from_path(hparams, input_dirs, wav_dir, mel_dir, n_jobs=12, tqdm=lambda x: x):
+def build_from_path(hparams, input_dir, wav_dir, mel_dir, n_jobs=12, tqdm=lambda x: x):
 	"""
 	Preprocesses the speech dataset from a gven input path to given output directories
 
@@ -23,25 +23,23 @@ def build_from_path(hparams, input_dirs, wav_dir, mel_dir, n_jobs=12, tqdm=lambd
 
 	# We use ProcessPoolExecutor to parallelize across processes, this is just for
 	# optimization purposes and it can be omited
-	executor = ProcessPoolExecutor(max_workers=n_jobs)
 	futures = []
-	index = 1
-	for input_dir in input_dirs:
-		trn_files = glob.glob(os.path.join(input_dir, 'xiaoya_22050', '*.trn'))
-		for trn in trn_files:
-			with open(trn) as f:
-				basename = trn[:-4]
-				wav_file = basename + '.wav'
-				wav_path = wav_file
-				basename = basename.split('/')[-1]
-				text = f.readline().strip()
-				futures.append(executor.submit(partial(_process_utterance, wav_dir, mel_dir, basename, wav_path, text, hparams)))
-				index += 1
+	executor = ProcessPoolExecutor(max_workers=n_jobs)
+	for root, _, files in os.walk(input_dir):
+		for f in files:
+			if f.endswith('.trn'):
+				trn_file = os.path.join(root, f)
+				with open(trn_file) as f:
+					basename = trn_file[:-4]
+					wav_file = basename + '.wav'
+					basename = basename.split('/')[-1]
+					text = f.readline().strip()
+					futures.append(executor.submit(partial(_process_utterance, wav_dir, mel_dir, basename, wav_file, text, hparams)))
 
 	return [future.result() for future in tqdm(futures) if future.result() is not None]
 
 
-def _process_utterance(wav_dir, mel_dir, index, wav_path, text, hparams):
+def _process_utterance(wav_dir, mel_dir, basename, wav_file, text, hparams):
 	"""
 	Preprocesses a single utterance wav/text pair
 
@@ -49,22 +47,21 @@ def _process_utterance(wav_dir, mel_dir, index, wav_path, text, hparams):
 	to the train.txt file
 
 	Args:
-		- mel_dir: the directory to write the mel spectograms into
 		- wav_dir: the directory to write the preprocessed wav into
-		- index: the numeric index to use in the spectogram filename
-		- wav_path: path to the audio file containing the speech input
+		- mel_dir: the directory to write the mel spectograms into
+		- basename: the basename of each file
+		- wav_file: path to the audio file containing the speech input
 		- text: text spoken in the input audio file
 		- hparams: hyper parameters
 
 	Returns:
-		- A tuple: (audio_filename, mel_filename, linear_filename, time_steps, mel_frames, linear_frames, text)
+		- A tuple: (audio_filename, mel_filename, time_steps, mel_frames, text)
 	"""
 	try:
 		# Load the audio as numpy array
-		wav = audio.load_wav(wav_path, sr=hparams.sample_rate)
+		wav = audio.load_wav(wav_file, sr=hparams.sample_rate)
 	except FileNotFoundError: #catch missing wav exception
-		print('file {} present in csv metadata is not present in wav folder. skipping!'.format(
-			wav_path))
+		print(f'file {wav_file} present in csv metadata is not present in wav folder. skipping!')
 		return None
 
 	#rescale wav
@@ -95,9 +92,9 @@ def _process_utterance(wav_dir, mel_dir, index, wav_path, text, hparams):
 	time_steps = len(out)
 
 	# Write the spectrogram and audio to disk
-	filename = '{}.npy'.format(index)
+	filename = f'{basename}.npy'
 	np.save(os.path.join(wav_dir, filename), out.astype(np.int16), allow_pickle=False)
-	np.save(os.path.join(mel_dir, filename), mel_spectrogram.T, allow_pickle=False)
+	np.save(os.path.join(mel_dir, filename), mel_spectrogram, allow_pickle=False)
 
 	# Return a tuple describing this training example
 	return (filename, time_steps, mel_frames, text)

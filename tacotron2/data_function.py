@@ -27,21 +27,25 @@
 
 import random
 import numpy as np
+import os
 import torch
 import torch.utils.data
 from common.layers import TacotronSTFT
-from common.utils import load_wav_to_torch, load_filepaths_and_text
+from common.utils import load_wav_to_torch, load_meta_dataset
 from tacotron2.text import text_to_sequence
 
 
-class TextMelLoader(torch.utils.data.Dataset):
+class TextMelDataset(torch.utils.data.Dataset):
     """
         1) loads audio,text pairs
         2) normalizes text and converts them to sequences of one-hot vectors
         3) computes mel-spectrograms from audio files.
     """
-    def __init__(self, args, files):
-        self.audiopaths_and_text = load_filepaths_and_text(args.dataset_path, files)
+    def __init__(self, args, anchor_dirs):
+        self.speaker_num = len(anchor_dirs)
+        self.meta_dirs = [os.path.join(args.dataset_path, anchor_dirs[i]) for i in range(self.speaker_num)]
+        self.metadatas = [load_meta_dataset(meta_dir) for meta_dir in self.meta_dirs]
+        self.offsets = [-1] * self.speaker_num
         self.text_cleaners = args.text_cleaners
         self.max_wav_value = args.max_wav_value
         self.sampling_rate = args.sampling_rate
@@ -50,15 +54,14 @@ class TextMelLoader(torch.utils.data.Dataset):
                                  args.n_mel_channels, args.sampling_rate, args.mel_fmin,
                                  args.mel_fmax)
         random.seed(1234)
-        random.shuffle(self.audiopaths_and_text)
+        random.shuffle(self.metadatas)
 
-    def get_mel_text_pair(self, audiopath_and_text):
-        # separate filename and text
-        audiopath, text = audiopath_and_text[0], audiopath_and_text[1]
-        text_len = len(text)
-        text = self.get_text(text)
-        mel = self.get_mel(audiopath)
-        return (text, mel, text_len)
+    def get_mel_text_pair(self, speaker_id, metadata):
+        npy_mel, text = metadata
+        seq_len = len(text)
+        seq = self.get_sequence(text, speaker_id)
+        mel = self.get_mel(npy_mel)
+        return (seq, mel, seq_len)
 
     def get_mel(self, filename):
         if False:#not self.load_mel_from_disk:
@@ -71,25 +74,27 @@ class TextMelLoader(torch.utils.data.Dataset):
             melspec = self.stft.mel_spectrogram(audio_norm)
             melspec = torch.squeeze(melspec, 0)
         else:
-            melspec = torch.from_numpy(np.load(filename).T)
+            melspec = torch.from_numpy(np.load(filename))
             assert melspec.size(0) == self.stft.n_mel_channels, (
                 'Mel dimension mismatch: given {}, expected {}'.format(
                     melspec.size(0), self.stft.n_mel_channels))
 
         return melspec
 
-    def get_text(self, text):
-        return text_to_sequence(text, self.text_cleaners)
+    def get_sequence(self, text, speaker_id):
+        return text_to_sequence(text, speaker_id, self.text_cleaners)
 
     def __getitem__(self, index):
-        return self.get_mel_text_pair(self.audiopaths_and_text[index])
+        group = [self.get_mel_text_pair(i, self.metadatas[i][self.offsets[i]]) for i in range(self.speaker_num)]
+        self.offsets = [(self.offsets[i] + 1) % len(self.metadatas[i]) for i in range(self.speaker_num)]
+        return group
 
     def __len__(self):
-        return len(self.audiopaths_and_text)
+        return sum([len(m) for m in self.metadatas]) // self.speaker_num
 
 
 class TextMelCollate():
-    """ Zero-pads model inputs and targets based on number of frames per setep
+    """ Zero-pads model inputs and targets based on number of frames per step
     """
     def __init__(self, args):
         self.n_frames_per_step = args.n_frames_per_step
@@ -101,6 +106,9 @@ class TextMelCollate():
         ------
         batch: [text_normalized, mel_normalized]
         """
+        # Flatten the batch
+        batch = [sample for group in batch for sample in group]
+
         # Right zero-pad all one-hot text sequences to max input length
         text_lengths, ids_sorted_decreasing = torch.sort(
             torch.IntTensor([len(x[0]) for x in batch]),

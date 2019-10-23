@@ -51,17 +51,14 @@ def load_wav_to_torch(full_path):
     return torch.FloatTensor(data.astype(np.float32)), sampling_rate
 
 
-def load_filepaths_and_text(dataset_path, filename, split="|"):
-    with open(filename, encoding='utf-8') as f:
-        def split_line(root, line):
+def load_meta_dataset(dirname, filename='train.txt', split="|"):
+    with open(os.path.join(dirname, filename)) as f:
+        def split_line(line):
             parts = line.strip().split(split)
-            if len(parts) > 2:
-                raise Exception("incorrect line format for file: {}".format(filename))
-            path = os.path.join(root, parts[0])
-            text = parts[1]
-            return path,text
-        filepaths_and_text = [split_line(dataset_path, line) for line in f]
-    return filepaths_and_text
+            mel_path = os.path.join(dirname, 'mels', parts[0])
+            text = parts[-1]
+            return mel_path, text
+        return [split_line(line) for line in f.readlines()]
 
 
 def to_gpu(x):
