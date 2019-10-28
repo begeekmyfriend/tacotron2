@@ -48,6 +48,7 @@ def parse_args(parser):
     parser.add_argument('-i', '--input-file', type=str, default="text.txt", help='full path to the input text (phareses separated by new line)')
     parser.add_argument('-o', '--output', type=str, default="outputs", help='output folder to save audio (file per phrase)')
     parser.add_argument('--checkpoint', type=str, default="logs/checkpoint_latest.pt", help='full path to the Tacotron2 model checkpoint file')
+    parser.add_argument('-id', '--speaker-id', default=0, type=int, help='Speaker identity')
     parser.add_argument('-sr', '--sampling-rate', default=22050, type=int, help='Sampling rate')
     parser.add_argument('--amp-run', action='store_true', help='inference with AMP')
     parser.add_argument('--log-file', type=str, default='nvlog.json', help='Filename for logging')
@@ -68,7 +69,7 @@ def load_and_setup_model(parser, args):
     checkpoint_path = args.checkpoint
     parser = parse_tacotron2_args(parser, add_help=False)
     args, _ = parser.parse_known_args()
-    model = get_tacotron2_model(args, is_training=False)
+    model = get_tacotron2_model(args, 4, is_training=False)
     model.restore_checkpoint(checkpoint_path)
     model.eval()
 
@@ -95,8 +96,8 @@ def pad_sequences(sequences):
     return texts, text_lengths, ids_sorted_decreasing
 
 
-def prepare_input_sequence(texts):
-    sequences = [text_to_sequence(text, ['basic_cleaners'])[:] for text in texts]
+def prepare_input_sequence(texts, speaker_id):
+    sequences = [text_to_sequence(text, speaker_id, ['basic_cleaners'])[:] for text in texts]
     texts, text_lengths, ids_sorted_decreasing = pad_sequences(sequences)
 
     if torch.cuda.is_available():
@@ -169,7 +170,7 @@ def main():
 
     measurements = {}
 
-    sequences, text_lengths, ids_sorted_decreasing = prepare_input_sequence(texts)
+    sequences, text_lengths, ids_sorted_decreasing = prepare_input_sequence(texts, args.speaker_id)
 
     with torch.no_grad(), MeasureTime(measurements, "tacotron2_time"):
         _, mels, _, _, mel_lengths = model.infer(sequences, text_lengths)

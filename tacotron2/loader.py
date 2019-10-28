@@ -100,14 +100,14 @@ def _init_bn(module):
         _init_bn(child)
 
 
-def get_tacotron2_model(args, is_training=True):
+def get_tacotron2_model(args, speaker_num, is_training=True):
     config = dict(
         # optimization
         mask_padding=args.mask_padding,
         # audio
         n_mel_channels=args.n_mel_channels,
         # symbols
-        n_symbols=args.n_symbols * len(args.training_anchor_dirs),
+        n_symbols=args.n_symbols * speaker_num,
         symbols_embedding_dim=args.symbols_embedding_dim,
         # encoder
         encoder_kernel_size=args.encoder_kernel_size,

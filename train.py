@@ -241,7 +241,7 @@ def main():
     LOGGER.log(key=tags.RUN_START)
     run_start_time = time.time()
 
-    model = get_tacotron2_model(args, is_training=True)
+    model = get_tacotron2_model(args, len(args.training_anchor_dirs), is_training=True)
 
     if not args.amp_run and distributed_run:
         model = DDP(model)
