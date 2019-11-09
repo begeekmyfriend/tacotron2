@@ -202,9 +202,9 @@ class Encoder(nn.Module):
             convolutions.append(conv_layer)
         self.convolutions = nn.ModuleList(convolutions)
 
-        self.lstm = nn.LSTM(encoder_embedding_dim,
-                            int(encoder_embedding_dim / 2), 1,
-                            batch_first=True, bidirectional=True)
+        self.encoder_lstm = nn.LSTM(encoder_embedding_dim,
+                                    int(encoder_embedding_dim / 2), 1,
+                                    batch_first=True, bidirectional=True)
 
     def forward(self, x, text_lengths):
         for conv in self.convolutions:
@@ -218,7 +218,7 @@ class Encoder(nn.Module):
         x = nn.utils.rnn.pack_padded_sequence(x, text_lengths, batch_first=True)
 
         # [B, T_in, encoder_dim]
-        outputs, _ = self.lstm(x)
+        outputs, _ = self.encoder_lstm(x)
 
         outputs, _ = nn.utils.rnn.pad_packed_sequence(outputs, batch_first=True)
 
