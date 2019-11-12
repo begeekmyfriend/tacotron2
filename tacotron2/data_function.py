@@ -131,19 +131,22 @@ class TextMelCollate():
         targets, reduced_targets = [], []
         gates = np.zeros([len(batch), max_target_len], dtype=np.float32)
         target_lengths = torch.IntTensor(len(batch))
+        reduced_target_lengths = torch.IntTensor(len(batch))
         for i in range(len(ids_sorted_decreasing)):
             mel = batch[ids_sorted_decreasing[i]][1]
             target_lengths[i] = mel.shape[1]
             gates[i, mel.shape[1] - 1:] = 1
             padded_mel = np.pad(mel, [(0, 0), (0, max_target_len - mel.size(1))], mode='constant', constant_values=self.mel_pad_val)
             targets.append(padded_mel)
-            reduced_targets.append(padded_mel[:, ::self.n_frames_per_step])
+            reduced_mel = padded_mel[:, ::self.n_frames_per_step]
+            reduced_targets.append(reduced_mel)
+            reduced_target_lengths[i] = reduced_mel.shape[1]
 
         texts = torch.from_numpy(np.stack(texts))
         targets = torch.from_numpy(np.stack(targets))
         reduced_targets = torch.from_numpy(np.stack(reduced_targets))
         gates = torch.from_numpy(gates)
-        return texts, text_lengths, targets, reduced_targets, gates, target_lengths, 
+        return texts, text_lengths, targets, reduced_targets, gates, target_lengths, reduced_target_lengths
 
 
 def to_gpu(x):
@@ -154,8 +157,8 @@ def to_gpu(x):
 
 
 def batch_to_gpu(batch):
-    texts, text_lengths, targets, reduced_targets, gates, target_lengths = batch
-    x = (to_gpu(texts).long(), to_gpu(text_lengths).int(), to_gpu(reduced_targets).float(), to_gpu(target_lengths).int())
+    texts, text_lengths, targets, reduced_targets, gates, target_lengths, reduced_target_lengths = batch
+    x = (to_gpu(texts).long(), to_gpu(text_lengths).int(), to_gpu(reduced_targets).float(), to_gpu(reduced_target_lengths).int())
     y = (targets, gates)
     num_frames = torch.sum(target_lengths)
     return (x, y, num_frames)
