@@ -51,7 +51,7 @@ def load_wav_to_torch(full_path):
     return torch.FloatTensor(data.astype(np.float32)), sampling_rate
 
 
-def load_meta_dataset(dirname, filename='train.txt', split="|"):
+def load_metadata(dirname, filename='train.txt', split="|"):
     with open(os.path.join(dirname, filename)) as f:
         def split_line(line):
             parts = line.strip().split(split)

@@ -31,7 +31,7 @@ import os
 import torch
 import torch.utils.data
 from common.layers import TacotronSTFT
-from common.utils import load_wav_to_torch, load_meta_dataset
+from common.utils import load_wav_to_torch, load_metadata
 from tacotron2.text import text_to_sequence
 
 
@@ -44,7 +44,7 @@ class TextMelDataset(torch.utils.data.Dataset):
     def __init__(self, args, anchor_dirs):
         self.speaker_num = len(anchor_dirs)
         self.meta_dirs = [os.path.join(args.dataset_path, anchor_dirs[i]) for i in range(self.speaker_num)]
-        self.metadatas = [load_meta_dataset(meta_dir) for meta_dir in self.meta_dirs]
+        self.metadatas = [load_metadata(meta_dir) for meta_dir in self.meta_dirs]
         self.offsets = [-1] * self.speaker_num
         self.text_cleaners = args.text_cleaners
         self.max_wav_value = args.max_wav_value
@@ -110,15 +110,15 @@ class TextMelCollate():
         batch = [sample for group in batch for sample in group]
 
         # Right zero-pad all one-hot text sequences to max input length
-        text_lengths, ids_sorted_decreasing = torch.sort(
+        seq_lens, ids_sorted_decreasing = torch.sort(
             torch.IntTensor([len(x[0]) for x in batch]),
             dim=0, descending=True)
-        max_text_len = text_lengths[0]
+        max_seq_len = seq_lens[0]
 
-        texts = []
+        seqs = []
         for i in range(len(ids_sorted_decreasing)):
-            text = batch[ids_sorted_decreasing[i]][0]
-            texts.append(np.pad(text, [0, max_text_len - len(text)], mode='constant'))
+            seq = batch[ids_sorted_decreasing[i]][0]
+            seqs.append(np.pad(seq, [0, max_seq_len - len(seq)], mode='constant'))
 
         # Right zero-pad mel-spec
         num_mels = batch[0][1].size(0)
@@ -131,7 +131,6 @@ class TextMelCollate():
         targets, reduced_targets = [], []
         gates = np.zeros([len(batch), max_target_len], dtype=np.float32)
         target_lengths = torch.IntTensor(len(batch))
-        reduced_target_lengths = torch.IntTensor(len(batch))
         for i in range(len(ids_sorted_decreasing)):
             mel = batch[ids_sorted_decreasing[i]][1]
             target_lengths[i] = mel.shape[1]
@@ -140,13 +139,12 @@ class TextMelCollate():
             targets.append(padded_mel)
             reduced_mel = padded_mel[:, ::self.n_frames_per_step]
             reduced_targets.append(reduced_mel)
-            reduced_target_lengths[i] = reduced_mel.shape[1]
 
-        texts = torch.from_numpy(np.stack(texts))
+        seqs = torch.from_numpy(np.stack(seqs))
         targets = torch.from_numpy(np.stack(targets))
         reduced_targets = torch.from_numpy(np.stack(reduced_targets))
         gates = torch.from_numpy(gates)
-        return texts, text_lengths, targets, reduced_targets, gates, target_lengths, reduced_target_lengths
+        return seqs, seq_lens, targets, reduced_targets, gates, target_lengths
 
 
 def to_gpu(x):
@@ -157,8 +155,8 @@ def to_gpu(x):
 
 
 def batch_to_gpu(batch):
-    texts, text_lengths, targets, reduced_targets, gates, target_lengths, reduced_target_lengths = batch
-    x = (to_gpu(texts).long(), to_gpu(text_lengths).int(), to_gpu(reduced_targets).float(), to_gpu(reduced_target_lengths).int())
+    texts, text_lengths, targets, reduced_targets, gates, target_lengths = batch
+    x = (to_gpu(texts).long(), to_gpu(text_lengths).int(), to_gpu(reduced_targets).float(), to_gpu(target_lengths).int())
     y = (targets, gates)
     num_frames = torch.sum(target_lengths)
     return (x, y, num_frames)

@@ -33,28 +33,32 @@ import time
 import torch
 # from apex import amp
 from scipy.io.wavfile import write
+from tacotron2.data_function import to_gpu
 from tacotron2.loader import parse_tacotron2_args
 from tacotron2.loader import get_tacotron2_model
 from tacotron2.text import text_to_sequence
+from common.utils import load_metadata
 from dllogger.logger import LOGGER
 import dllogger.logger as dllg
 from dllogger.autologging import log_hardware, log_args
+from tqdm import tqdm
 
 
 def parse_args(parser):
     """
     Parse commandline arguments.
     """
-    parser.add_argument('-i', '--input-file', type=str, default="text.txt", help='full path to the input text (phareses separated by new line)')
-    parser.add_argument('-o', '--output', type=str, default="outputs", help='output folder to save audio (file per phrase)')
-    parser.add_argument('--checkpoint', type=str, default="logs/checkpoint_latest.pt", help='full path to the Tacotron2 model checkpoint file')
-    parser.add_argument('-id', '--speaker-id', default=0, type=int, help='Speaker identity')
-    parser.add_argument('-sn', '--speaker-num', default=1, type=int, help='Speaker number')
+    parser.add_argument('-o', '--output', type=str, default='gta', help='output folder to save audio (file per phrase)')
     parser.add_argument('-sr', '--sampling-rate', default=22050, type=int, help='Sampling rate')
+    parser.add_argument('--checkpoint', type=str, default="logs/checkpoint_latest.pt", help='full path to the Tacotron2 model checkpoint file')
+    parser.add_argument('--dataset-path', type=str, default='filelists', help='Path to dataset')
+    parser.add_argument('--anchor-dirs', default=['ljs_mel_text_train_filelist.txt'], type=str, nargs='*', help='Multi-speaker corpus directory')
+    parser.add_argument('--text-cleaners', nargs='*', default=['basic_cleaners'], type=str, help='Type of text cleaners for input text')
     parser.add_argument('--amp-run', action='store_true', help='inference with AMP')
     parser.add_argument('--log-file', type=str, default='nvlog.json', help='Filename for logging')
     parser.add_argument('--include-warmup', action='store_true', help='Include warmup')
-    parser.add_argument('--stft-hop-length', type=int, default=275, help='STFT hop length for estimating audio length from mel size')
+    parser.add_argument('--hop-length', type=int, default=275, help='STFT hop length for estimating audio length from mel size')
+    parser.add_argument('-r', '--reduction-factor', default=3, type=int, help='Number of frames processed per step')
 
     return parser
 
@@ -70,7 +74,7 @@ def load_and_setup_model(parser, args):
     checkpoint_path = args.checkpoint
     parser = parse_tacotron2_args(parser, add_help=False)
     args, _ = parser.parse_known_args()
-    model = get_tacotron2_model(args, args.speaker_num, is_training=False)
+    model = get_tacotron2_model(args, len(args.anchor_dirs), is_training=False)
     model.restore_checkpoint(checkpoint_path)
     model.eval()
 
@@ -149,32 +153,35 @@ def main():
     log_args(args)
 
     if args.include_warmup:
-        sequences = torch.randint(low=0, high=148, size=(1,50),
-                                  dtype=torch.long).cuda()
+        sequences = torch.randint(low=0, high=148, size=(1,50), dtype=torch.long).cuda()
         text_lengths = torch.IntTensor([sequence.size(1)]).cuda().long()
         for i in range(3):
             with torch.no_grad():
                 _, mels, _, _, mel_lengths = model.infer(sequences, text_lengths)
 
-    try:
-        f = open(args.input_file)
-        sentences = list(map(lambda s : s.strip(), f.readlines()))
-    except UnicodeDecodeError:
-        f = open(args.input_file, encoding='gbk')
-        sentences = list(map(lambda s : s.strip(), f.readlines()))
-
     os.makedirs(args.output, exist_ok=True)
-
-    texts = sentences[1::2]
 
     LOGGER.iteration_start()
 
     measurements = {}
 
-    sequences, text_lengths, ids_sorted_decreasing = prepare_input_sequence(texts, args.speaker_id)
-
+    anchor_dirs = [os.path.join(args.dataset_path, anchor) for anchor in args.anchor_dirs]
+    metadatas = [load_metadata(anchor) for anchor in anchor_dirs]
     with torch.no_grad(), MeasureTime(measurements, "tacotron2_time"):
-        _, mels, _, _, mel_lengths = model.infer(sequences, text_lengths)
+        for speaker_id in range(len(anchor_dirs)):
+            metadata = metadatas[speaker_id]
+            for mel_path, text in tqdm(metadata):
+               seq = text_to_sequence(text, speaker_id, ['basic_cleaners'])
+               seqs = torch.from_numpy(np.stack(seq)).unsqueeze(0)
+               seq_lens = torch.IntTensor([len(text)])
+               melspec = torch.from_numpy(np.load(mel_path))
+               target = melspec[:, ::args.reduction_factor]
+               targets = torch.from_numpy(np.stack(target)).unsqueeze(0)
+               target_lengths = torch.IntTensor([target.shape[1]])
+               inputs = (to_gpu(seqs).long(), to_gpu(seq_lens).int(), to_gpu(targets).float(), to_gpu(target_lengths).int())
+               _, mel_out, _, _ = model(inputs)
+               fname = os.path.basename(mel_path)
+               np.save(os.path.join(args.output, fname), mel_out[:, :melspec.shape[1]], allow_pickle=False)
 
     tacotron2_infer_perf = mels.size(0)*mels.size(2)/measurements['tacotron2_time']
 
