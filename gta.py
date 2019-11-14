@@ -183,19 +183,10 @@ def main():
                fname = os.path.basename(mel_path)
                np.save(os.path.join(args.output, fname), mel_out[:, :melspec.shape[1]], allow_pickle=False)
 
-    tacotron2_infer_perf = mels.size(0)*mels.size(2)/measurements['tacotron2_time']
-
-    LOGGER.log(key="tacotron2_frames_per_sec", value=tacotron2_infer_perf)
     LOGGER.log(key="tacotron2_latency", value=measurements['tacotron2_time'])
     LOGGER.log(key="latency", value=(measurements['tacotron2_time']))
     LOGGER.iteration_stop()
     LOGGER.finish()
-
-    # recover to the original order and concatenate
-    ids_sorted_decreasing = ids_sorted_decreasing.numpy().tolist()
-    mels = [mel[:, :length] for mel, length in zip(mels, mel_lengths)]
-    mels = [mels[ids_sorted_decreasing.index(i)] for i in range(len(ids_sorted_decreasing))]
-    np.save(os.path.join(args.output, 'eval_mel.npy'), np.concatenate(mels, axis=-1), allow_pickle=False)
 
 
 if __name__ == '__main__':
