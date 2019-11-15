@@ -32,6 +32,7 @@ import sys
 import time
 import torch
 # from apex import amp
+from common import audio
 from scipy.io.wavfile import write
 from tacotron2.loader import parse_tacotron2_args
 from tacotron2.loader import get_tacotron2_model
@@ -188,7 +189,9 @@ def main():
     ids_sorted_decreasing = ids_sorted_decreasing.numpy().tolist()
     mels = [mel[:, :length] for mel, length in zip(mels, mel_lengths)]
     mels = [mels[ids_sorted_decreasing.index(i)] for i in range(len(ids_sorted_decreasing))]
-    np.save(os.path.join(args.output, 'eval_mel.npy'), np.concatenate(mels, axis=-1), allow_pickle=False)
+    wav = audio.inv_mel_spectrogram(np.concatenate(mels, axis=-1))
+    audio.save_wav(wav, os.path.join(args.output, 'eval.wav'))
+    # np.save(os.path.join(args.output, 'eval_mel.npy'), np.concatenate(mels, axis=-1), allow_pickle=False)
 
 
 if __name__ == '__main__':
