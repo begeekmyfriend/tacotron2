@@ -54,7 +54,8 @@ class TextMelDataset(torch.utils.data.Dataset):
                                  args.n_mel_channels, args.sampling_rate, args.mel_fmin,
                                  args.mel_fmax)
         random.seed(1234)
-        random.shuffle(self.metadatas)
+        for i in range(self.speaker_num):
+            random.shuffle(self.metadatas[i])
 
     def get_mel_text_pair(self, speaker_id, metadata):
         npy_mel, text = metadata
