@@ -41,7 +41,7 @@ from common.utils import to_gpu, get_mask_from_lengths
 class LocationLayer(nn.Module):
     def __init__(self, attention_n_filters, attention_kernel_size, attention_dim):
         super(LocationLayer, self).__init__()
-        self.location_conv = ConvNorm(2, attention_n_filters,
+        self.location_conv = ConvNorm(1, attention_n_filters,
                                       kernel_size=attention_kernel_size,
                                       padding=int((attention_kernel_size - 1) / 2),
                                       stride=1, dilation=1)
@@ -322,12 +322,13 @@ class Decoder(nn.Module):
         self.query, _ = self.decoder_lstm(rnn_input.unsqueeze(0))
         self.query = self.query.squeeze(0)
 
-        attention_weights_cat = torch.cat((self.attention_weights.unsqueeze(1), self.attention_weights_cum.unsqueeze(1)), dim=1)
+        attention_weights_cumulative = self.attention_weights_cum.unsqueeze(1)
         self.attention_context, self.attention_weights = self.attention_layer(
-            self.query, self.memory, attention_weights_cat, self.mask)
+            self.query, self.memory, attention_weights_cumulative, self.mask)
 
         # [B, MAX_TIME]
-        self.attention_weights_cum += self.attention_weights
+        # do not use '+=' as in-place operation for gradient computation
+        self.attention_weights_cum = self.attention_weights_cum + self.attention_weights
 
         x = torch.cat((self.query, self.attention_context), dim=1)
         # [B, n_mel_channels * n_frames_per_step]
@@ -352,7 +353,7 @@ class Decoder(nn.Module):
         """
         go_frame = memory.new(memory.size(0), self.n_mel_channels).zero_().unsqueeze(0)
         # (B, n_mel_channels, T_out) -> (T_out, B, n_mel_channels)
-        targets = targets.transpose(1, 2).transpose(0, 1)
+        targets = targets.permute(2, 0, 1)
         decoder_inputs = torch.cat((go_frame, targets), dim=0)
         prenet_outputs = self.prenet(decoder_inputs, inference=gta)
 
@@ -360,6 +361,7 @@ class Decoder(nn.Module):
         self.initialize_decoder_states(memory, mask=mask)
 
         mel_outputs, gate_outputs, alignments = [], [], []
+        # size - 1 for ignoring EOS synbol
         while len(mel_outputs) < decoder_inputs.size(0) - 1:
             prenet_output = prenet_outputs[len(mel_outputs)]
             mel_output, gate_output, attention_weights = self.decode(prenet_output)

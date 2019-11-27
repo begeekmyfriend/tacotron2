@@ -364,13 +364,11 @@ def main():
 
         # Plot alignemnt
         if epoch % args.epochs_per_alignment == 0 and args.rank == 0:
-            target_max_length = y[0].size(-1)
             alignments = y_pred[3].data.numpy()
             index = np.random.randint(len(alignments))
-            plot_alignment(alignments[index].transpose(0, 1),
+            plot_alignment(alignments[index].transpose(0, 1), # [enc_step, dec_step]
                            os.path.join(args.output_directory, f"align_{epoch:04d}_{iteration}.png"),
-                           info=f"{datetime.now().strftime('%Y-%m-%d %H:%M')} Epoch={epoch:04d} Iteration={iteration} Average loss={train_epoch_avg_loss/num_iters:.5f}",
-                           max_len=target_max_length//args.n_frames_per_step)
+                           info=f"{datetime.now().strftime('%Y-%m-%d %H:%M')} Epoch={epoch:04d} Iteration={iteration} Average loss={train_epoch_avg_loss/num_iters:.5f}")
 
         # Save checkpoint
         if epoch % args.epochs_per_checkpoint == 0 and args.rank == 0:

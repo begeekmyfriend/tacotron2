@@ -45,7 +45,7 @@ class TextMelDataset(torch.utils.data.Dataset):
         self.speaker_num = len(anchor_dirs)
         self.meta_dirs = [os.path.join(args.dataset_path, anchor_dirs[i]) for i in range(self.speaker_num)]
         self.metadatas = [load_metadata(meta_dir) for meta_dir in self.meta_dirs]
-        self.offsets = [-1] * self.speaker_num
+        self.offsets = [0] * self.speaker_num
         self.text_cleaners = args.text_cleaners
         self.max_wav_value = args.max_wav_value
         self.sampling_rate = args.sampling_rate
