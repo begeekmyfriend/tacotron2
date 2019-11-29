@@ -170,7 +170,7 @@ def main():
 
     measurements = {}
 
-    sequences, text_lengths, ids_sorted_decreasing = prepare_input_sequence(texts, args.speaker_id)
+    sequences, text_lengths, ids_sorted_decreasing = prepare_input_sequence(sentences, args.speaker_id)
 
     with torch.no_grad(), MeasureTime(measurements, "tacotron2_time"):
         _, mels, _, _, mel_lengths = model.infer(sequences, text_lengths)
