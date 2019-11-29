@@ -166,8 +166,6 @@ def main():
 
     os.makedirs(args.output, exist_ok=True)
 
-    texts = sentences[1::2]
-
     LOGGER.iteration_start()
 
     measurements = {}
