@@ -13,7 +13,10 @@ def split_title_line(title_text, max_words=5):
 	seq = title_text.split()
 	return '\n'.join([' '.join(seq[i:i + max_words]) for i in range(0, len(seq), max_words)])
 
-def plot_alignment(alignment, path, info=None, split_title=False):
+def plot_alignment(alignment, path, info=None, split_title=False, max_len=None):
+	if max_len:
+		alignment = alignment[:, :max_len]
+
 	fig = plt.figure(figsize=(8, 6))
 	ax = fig.add_subplot(111)
 
