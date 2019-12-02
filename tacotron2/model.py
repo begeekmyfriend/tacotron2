@@ -48,8 +48,8 @@ class LocationLayer(nn.Module):
         self.location_dense = LinearNorm(attention_n_filters, attention_dim,
                                          bias=False, w_init_gain='tanh')
 
-    def forward(self, attention_weights_cat):
-        processed_attention_weights = self.location_conv(attention_weights_cat)
+    def forward(self, attention_weights_cum):
+        processed_attention_weights = self.location_conv(attention_weights_cum)
         processed_attention_weights = processed_attention_weights.transpose(1, 2)
         processed_attention_weights = self.location_dense(processed_attention_weights)
         return processed_attention_weights
@@ -67,13 +67,13 @@ class Attention(nn.Module):
                                             attention_dim)
         self.score_mask_value = -float("inf")
 
-    def get_alignment_energies(self, query, memory, attention_weights_cat):
+    def get_alignment_energies(self, query, memory, attention_weights_cum):
         """
         PARAMS
         ------
         query: decoder output (B, decoder_dim)
         memory: encoder outputs (B, T_in, embed_dim)
-        attention_weights_cat: cumulative and prev. att weights (B, 2, max_time)
+        attention_weights_cum: cumulative attention weights (B, 1, max_time)
 
         RETURNS
         -------
@@ -85,23 +85,23 @@ class Attention(nn.Module):
         # [B, 1, attn_dim]
         query = self.query_layer(query.unsqueeze(1))
         # [B, T, attn_dim]
-        location_sensitive_weights = self.location_layer(attention_weights_cat)
+        location_sensitive_weights = self.location_layer(attention_weights_cum)
         # score function
         energies = self.v(torch.tanh(query + location_sensitive_weights + key))
         energies = energies.squeeze(-1)
 
         return energies
 
-    def forward(self, query, memory, attention_weights_cat, mask=None):
+    def forward(self, query, memory, attention_weights_cum, mask=None):
         """
         PARAMS
         ------
         query: attention rnn last output [B, decoder_dim]
         memory: encoder outputs [B, T_in, embed_dim]
-        attention_weights_cat: previous and cummulative attention weights
+        attention_weights_cum: cummulative attention weights
         mask: binary mask for padded data
         """
-        alignment = self.get_alignment_energies(query, memory, attention_weights_cat)
+        alignment = self.get_alignment_energies(query, memory, attention_weights_cum)
 
         if mask is not None:
             alignment.masked_fill_(mask, self.score_mask_value)
@@ -327,7 +327,7 @@ class Decoder(nn.Module):
             self.query, self.memory, attention_weights_cumulative, self.mask)
 
         # [B, MAX_TIME]
-        # do not use '+=' as in-place operation for gradient computation
+        # Avoid '+=' as in-place operation in case of gradient computation
         self.attention_weights_cum = self.attention_weights_cum + self.attention_weights
 
         x = torch.cat((self.query, self.attention_context), dim=1)
