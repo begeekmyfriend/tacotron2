@@ -19,17 +19,19 @@ hparams = tf.contrib.training.HParams(
 	clip_mels_length = True, #For cases of OOM (Not really recommended, working on a workaround)
 	max_mel_frames = 900,  #Only relevant when clip_mels_length = True
 	max_text_length = 300,  #Only relevant when clip_mels_length = True
+	sentence_span = 20,  # Number of mel hops for each sentence interval
 
 	#Mel spectrogram
-	n_fft = 2048, #Extra window size is filled with 0 paddings to match this parameter
-	hop_size = 275, #For 22050Hz, 275 ~= 12.5 ms
-	win_size = 1100, #For 22050Hz, 1100 ~= 50 ms (If None, win_size = n_fft)
+	n_fft = 1024, #Extra window size is filled with 0 paddings to match this parameter
+	hop_size = 256, #For 22050Hz, 256 ~= 11.5 ms
+	win_size = 1024, #For 22050Hz, 1024 ~= 46 ms (If None, win_size = n_fft)
 	sample_rate = 22050, #22050 Hz (corresponding to ljspeech dataset)
 	frame_shift_ms = None,
 	preemphasis = 0.97, # preemphasis coefficient
+	vocoder = 'wavernn', # Could be 'wavernn' or 'melgan'
 
 	#Multi-speaker batch_size should be integer multiplies number of speakers.
-	anchor_dirs = ['xmly_fanfanli_22050', 'xmly_xiaoya_22050', 'xmly_qiuyixin_22050'],
+	anchor_dirs = ['tts_fanfanli_22050', 'tts_xiaoya_22050', 'tts_yangluzhuo_22050', 'tts_qiuyixin_22050'],
 
 	#M-AILABS (and other datasets) trim params
 	trim_fft_size = 512,
@@ -41,7 +43,6 @@ hparams = tf.contrib.training.HParams(
 	allow_clipping_in_normalization = False, #Only relevant if mel_normalization = True
 	symmetric_mels = True, #Whether to scale the data to be symmetric around 0
 	max_abs_value = 4., #max absolute value of data. If symmetric, data will be [-max, max] else [0, max]
-	normalize_for_wavenet = True, #whether to rescale to [0, 1] for wavenet.
 
 	#Limits
 	min_level_db = -120,
@@ -106,7 +107,7 @@ hparams = tf.contrib.training.HParams(
 	tacotron_batch_size = 36, #number of training samples on each training steps
 	#Tacotron Batch synthesis supports ~16x the training batch size (no gradients during testing).
 	#Training Tacotron with unmasked paddings makes it aware of them, which makes synthesis times different from training. We thus recommend masking the encoder.
-	tacotron_synthesis_batch_size = 1024, #DO NOT MAKE THIS BIGGER THAN 1 IF YOU DIDN'T TRAIN TACOTRON WITH "mask_encoder=True"!!
+	tacotron_synthesis_batch_size = 48, #DO NOT MAKE THIS BIGGER THAN 1 IF YOU DIDN'T TRAIN TACOTRON WITH "mask_encoder=True"!!
 	tacotron_test_size = 0.05, #% of data to keep as test data, if None, tacotron_test_batches must be not None. (5% is enough to have a good idea about overfit)
 	tacotron_test_batches = None, #number of test batches.
 
@@ -139,7 +140,7 @@ hparams = tf.contrib.training.HParams(
 	#The second approach is inspired by:
 	#Bengio et al. 2015: Scheduled Sampling for Sequence Prediction with Recurrent Neural Networks.
 	#Can be found under: https://arxiv.org/pdf/1506.03099.pdf
-	tacotron_teacher_forcing_mode = 'scheduled', #Can be ('constant' or 'scheduled'). 'scheduled' mode applies a cosine teacher forcing ratio decay. (Preference: scheduled)
+	tacotron_teacher_forcing_mode = 'constant', #Can be ('constant' or 'scheduled'). 'scheduled' mode applies a cosine teacher forcing ratio decay. (Preference: scheduled)
 	tacotron_teacher_forcing_ratio = 1., #Value from [0., 1.], 0.=0%, 1.=100%, determines the % of times we force next decoder inputs, Only relevant if mode='constant'
 	tacotron_teacher_forcing_init_ratio = 1., #initial teacher forcing ratio. Relevant if mode='scheduled'
 	tacotron_teacher_forcing_final_ratio = 0., #final teacher forcing ratio. (Set None to use alpha instead) Relevant if mode='scheduled'

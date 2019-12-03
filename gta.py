@@ -57,7 +57,7 @@ def parse_args(parser):
     parser.add_argument('--amp-run', action='store_true', help='inference with AMP')
     parser.add_argument('--log-file', type=str, default='nvlog.json', help='Filename for logging')
     parser.add_argument('--include-warmup', action='store_true', help='Include warmup')
-    parser.add_argument('--hop-length', type=int, default=275, help='STFT hop length for estimating audio length from mel size')
+    parser.add_argument('--hop-length', type=int, default=256, help='STFT hop length for estimating audio length from mel size')
     parser.add_argument('-r', '--reduction-factor', default=3, type=int, help='Number of frames processed per step')
 
     return parser

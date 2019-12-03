@@ -41,7 +41,7 @@ from common.audio_processing import window_sumsquare
 
 class STFT(torch.nn.Module):
     """adapted from Prem Seetharaman's https://github.com/pseeth/pytorch-stft"""
-    def __init__(self, filter_length=2048, hop_length=275, win_length=1100, window='hann'):
+    def __init__(self, filter_length=1024, hop_length=256, win_length=1024, window='hann'):
         super(STFT, self).__init__()
         self.filter_length = filter_length
         self.hop_length = hop_length

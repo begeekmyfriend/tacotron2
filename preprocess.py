@@ -2,7 +2,7 @@ import argparse
 import os
 from multiprocessing import cpu_count
 
-from datasets import preprocessor
+from common import preprocessor
 from hparams import hparams
 from tqdm import tqdm
 
@@ -12,10 +12,14 @@ def preprocess(args, input_folders, output_dir, hparams):
 	max_text_lens, max_mel_lens, max_timestep_lens = [], [], []
 
 	for input_dir in input_folders:
-		wav_dir = os.path.join(output_dir, input_dir.split('/')[-1], 'audio')
-		mel_dir = os.path.join(output_dir, input_dir.split('/')[-1], 'mels')
+		wav_dir = os.path.join(output_dir, input_dir.split('/')[-1])
+		mel_dir = os.path.join(output_dir, input_dir.split('/')[-1])
+		if hparams.vocoder != 'melgan':
+			wav_dir = os.path.join(wav_dir, 'audio')
+			mel_dir = os.path.join(mel_dir, 'mels')
 		os.makedirs(wav_dir, exist_ok=True)
 		os.makedirs(mel_dir, exist_ok=True)
+
 		metadata = preprocessor.build_from_path(hparams, input_dir, wav_dir, mel_dir, args.n_jobs, tqdm=tqdm)
 		with open(os.path.join(output_dir, input_dir.split('/')[-1], 'train.txt'), 'w') as f:
 			for m in metadata:
@@ -46,7 +50,7 @@ def norm_data(args):
 		return [os.path.join(args.base_dir, args.dataset)]
 
 	if args.dataset.startswith('MANDARIN'):
-		return [os.path.join(args.base_dir, 'data_thchs30', anchor) for anchor in hparams.anchor_dirs]
+		return [os.path.join(args.base_dir, 'data_mandarin', anchor) for anchor in hparams.anchor_dirs]
 
 	if args.dataset == 'M-AILABS':
 		supported_languages = ['en_US', 'en_UK', 'fr_FR', 'it_IT', 'de_DE', 'es_ES', 'ru_RU',
