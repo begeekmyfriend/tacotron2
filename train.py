@@ -169,7 +169,7 @@ def evaluating(model):
 def validate(model, criterion, valate_dataset, iteration, collate_fn, distributed_run, args):
     """Handles all the validation scoring and printing"""
     with evaluating(model), torch.no_grad():
-        val_loader = DataLoader(valate_dataset, num_workers=1, shuffle=False,
+        val_loader = DataLoader(valate_dataset, num_workers=8, shuffle=False,
                                 batch_size=args.batch_size//len(args.validation_anchor_dirs),
                                 pin_memory=False, collate_fn=collate_fn)
 
