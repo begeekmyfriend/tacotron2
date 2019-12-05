@@ -169,7 +169,7 @@ def evaluating(model):
 def validate(model, criterion, valate_dataset, iteration, collate_fn, distributed_run, args):
     """Handles all the validation scoring and printing"""
     with evaluating(model), torch.no_grad():
-        val_loader = DataLoader(valate_dataset, num_workers=8, shuffle=False,
+        val_loader = DataLoader(valate_dataset, num_workers=1, shuffle=False,
                                 batch_size=args.batch_size//len(args.validation_anchor_dirs),
                                 pin_memory=False, collate_fn=collate_fn)
 
@@ -259,7 +259,7 @@ def main():
 
     collate_fn = TextMelCollate(args)
     train_dataset = TextMelDataset(args, args.training_anchor_dirs)
-    train_loader = DataLoader(train_dataset, num_workers=1, shuffle=False,
+    train_loader = DataLoader(train_dataset, num_workers=8, shuffle=False,
                               batch_size=args.batch_size//len(args.training_anchor_dirs),
                               pin_memory=False, drop_last=True, collate_fn=collate_fn)
     # valate_dataset = TextMelDataset(args, args.validation_anchor_dirs)
