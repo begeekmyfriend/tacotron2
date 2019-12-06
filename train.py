@@ -77,8 +77,8 @@ def parse_args(parser):
     training.add_argument('--seed', type=int, default=1234, help='Seed for PyTorch random number generators')
     training.add_argument('--dynamic-loss-scaling', type=bool, default=True, help='Enable dynamic loss scaling')
     training.add_argument('--amp-run', action='store_true', help='Enable AMP')
-    training.add_argument('--cudnn-enabled', action='store_true', help='Enable cudnn')
-    training.add_argument('--cudnn-benchmark', action='store_true', help='Run cudnn benchmark')
+    training.add_argument('--cudnn-enabled', default=True, help='Enable cudnn')
+    training.add_argument('--cudnn-benchmark', default=True, help='Run cudnn benchmark')
     training.add_argument('--disable-uniform-initialize-bn-weight', action='store_true', help='disable uniform initialization of batchnorm layer weight')
 
     optimization = parser.add_argument_group('optimization setup')
