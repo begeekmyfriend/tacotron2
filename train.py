@@ -259,7 +259,7 @@ def main():
 
     collate_fn = TextMelCollate(args)
     train_dataset = TextMelDataset(args, args.training_anchor_dirs)
-    train_loader = DataLoader(train_dataset, num_workers=8, shuffle=False,
+    train_loader = DataLoader(train_dataset, num_workers=2, shuffle=False,
                               batch_size=args.batch_size//len(args.training_anchor_dirs),
                               pin_memory=False, drop_last=True, collate_fn=collate_fn)
     # valate_dataset = TextMelDataset(args, args.validation_anchor_dirs)

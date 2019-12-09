@@ -244,8 +244,8 @@ class Decoder(nn.Module):
 
         self.prenet = Prenet(n_mel_channels, [prenet_dim, prenet_dim])
 
-        self.decoder_lstm = nn.LSTM(prenet_dim + encoder_embedding_dim, decoder_rnn_dim,
-                                    self.decoder_n_lstms, batch_first=True, dropout=self.p_decoder_dropout)
+        self.lstm0 = nn.LSTMCell(prenet_dim + encoder_embedding_dim, decoder_rnn_dim)
+        self.lstm1 = nn.LSTMCell(decoder_rnn_dim + encoder_embedding_dim, decoder_rnn_dim)
 
         self.attention_layer = Attention(decoder_rnn_dim, encoder_embedding_dim,
                                          attention_dim, attention_location_n_filters,
@@ -265,6 +265,12 @@ class Decoder(nn.Module):
         """
         B = memory.size(0)
         MAX_TIME = memory.size(1)
+
+        self.h0 = torch.zeros(B, self.decoder_rnn_dim).cuda()
+        self.c0 = torch.zeros(B, self.decoder_rnn_dim).cuda()
+
+        self.h1 = torch.zeros(B, self.decoder_rnn_dim).cuda()
+        self.c1 = torch.zeros(B, self.decoder_rnn_dim).cuda()
 
         self.attention_weights = memory.new(B, MAX_TIME).zero_()
         self.attention_weights_cum = memory.new(B, MAX_TIME).zero_()
@@ -317,10 +323,13 @@ class Decoder(nn.Module):
         gate_output: gate output energies
         attention_weights:
         """
-        rnn_input = torch.cat((prenet_output, self.attention_context), -1)
+        x = torch.cat((prenet_output, self.attention_context), dim=-1)
+        self.h0, self.c0 = self.lstm0(x, (self.h0, self.c0))
+        x = F.dropout(self.h0, self.p_decoder_dropout, self.training)
 
-        self.query, _ = self.decoder_lstm(rnn_input.unsqueeze(0))
-        self.query = self.query.squeeze(0)
+        x = torch.cat((x, self.attention_context), dim=-1)
+        self.h1, self.c1 = self.lstm1(x, (self.h1, self.c1))
+        self.query = F.dropout(self.h1, self.p_decoder_dropout, self.training)
 
         attention_weights_cumulative = self.attention_weights_cum.unsqueeze(1)
         self.attention_context, self.attention_weights = self.attention_layer(
@@ -330,7 +339,7 @@ class Decoder(nn.Module):
         # Avoid '+=' as in-place operation in case of gradient computation
         self.attention_weights_cum = self.attention_weights_cum + self.attention_weights
 
-        x = torch.cat((self.query, self.attention_context), dim=1)
+        x = torch.cat((self.query, self.attention_context), dim=-1)
         # [B, n_mel_channels * n_frames_per_step]
         mel_output = self.linear_projection(x)
         # [B, n_frames_per_step]
@@ -358,7 +367,7 @@ class Decoder(nn.Module):
         prenet_outputs = self.prenet(decoder_inputs, inference=gta)
 
         mask =~ get_mask_from_lengths(memory_lengths) if memory.size(0) > 1 else None
-        self.initialize_decoder_states(memory, mask=mask)
+        self.initialize_decoder_states(memory, mask)
 
         mel_outputs, gate_outputs, alignments = [], [], []
         # size - 1 for ignoring EOS synbol
@@ -387,7 +396,7 @@ class Decoder(nn.Module):
         frame = memory.new(memory.size(0), self.n_mel_channels).zero_()
 
         mask =~ get_mask_from_lengths(memory_lengths) if memory.size(0) > 1 else None
-        self.initialize_decoder_states(memory, mask=mask)
+        self.initialize_decoder_states(memory, mask)
 
         mel_lengths = torch.zeros([memory.size(0)], dtype=torch.int32)
         if torch.cuda.is_available():
