@@ -188,7 +188,7 @@ def validate(model, criterion, valate_dataset, iteration, collate_fn, distribute
     LOGGER.log(key="val_iter_loss", value=reduced_val_loss)
 
 
-def adjust_learning_rate(epoch, optimizer, args):
+def adjust_learning_rate(optimizer, epoch, args):
     lr = cosine_decay(args.init_lr, args.final_lr, epoch, args.epochs)
 
     if optimizer.param_groups[0]['lr'] != lr:
@@ -286,6 +286,8 @@ def main():
         train_epoch_avg_frames_per_sec = 0.0
         num_iters = 0
 
+        adjust_learning_rate(optimizer, epoch, args)
+
         for i, batch in enumerate(train_loader):
             print(f"Batch: {i}/{len(train_loader)} epoch {epoch}")
             LOGGER.iteration_start()
@@ -293,7 +295,6 @@ def main():
             LOGGER.log(key=tags.TRAIN_ITER_START, value=i)
 
             # start = time.perf_counter()
-            adjust_learning_rate(epoch, optimizer, args)
 
             optimizer.zero_grad()
             x, y, num_frames = batch_to_gpu(batch)
