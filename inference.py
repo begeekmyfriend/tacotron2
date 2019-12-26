@@ -188,7 +188,7 @@ def main():
     mels = [mels[ids_sorted_decreasing.index(i)] for i in range(len(ids_sorted_decreasing))]
     wav = audio.inv_mel_spectrogram(np.concatenate(mels, axis=-1))
     audio.save_wav(wav, os.path.join(args.output, 'eval.wav'))
-    # np.save(os.path.join(args.output, 'eval_mel.npy'), np.concatenate(mels, axis=-1), allow_pickle=False)
+    np.save(os.path.join(args.output, 'eval.npy'), np.concatenate(mels, axis=-1), allow_pickle=False)
 
 
 if __name__ == '__main__':

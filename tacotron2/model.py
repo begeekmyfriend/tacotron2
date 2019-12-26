@@ -129,7 +129,7 @@ class Prenet(nn.Module):
                 x = F.relu(linear(x), inplace=True)
                 x0 = x[0].unsqueeze(0)
                 mask = torch.bernoulli(x0.new(x0.size()).fill_(0.5))
-                mask = mask.expand(x.size(0), x.size(1))
+                mask = mask.expand(x.size())
                 x = x*mask*2
         else:
             for linear in self.layers:

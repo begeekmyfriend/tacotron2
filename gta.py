@@ -179,7 +179,7 @@ def main():
                targets = torch.from_numpy(np.stack(target)).unsqueeze(0)
                target_lengths = torch.IntTensor([target.shape[1]])
                inputs = (to_gpu(seqs).long(), to_gpu(seq_lens).int(), to_gpu(targets).float(), to_gpu(target_lengths).int())
-               _, mel_outs, _, _ = model(inputs)
+               _, mel_outs, _, _ = model(inputs, gta=True)
                fname = os.path.basename(mel_path)
                np.save(os.path.join(args.output, fname), mel_outs[0, :, :melspec.shape[1]], allow_pickle=False)
 
