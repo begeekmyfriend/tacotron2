@@ -31,7 +31,7 @@ hparams = tf.contrib.training.HParams(
 	vocoder = 'wavernn', # Could be 'wavernn' or 'melgan'
 
 	#Multi-speaker batch_size should be integer multiplies number of speakers.
-	anchor_dirs = ['tts_fanfanli_22050', 'tts_xiaoya_22050', 'tts_yangluzhuo_22050', 'tts_qiuyixin_22050'],
+	anchor_dirs = ['tts_fanfanli_22050', 'tts_xiaoya_22050', 'tts_yangluzhuo_22050', 'tts_yuanzhonglu_22050'],
 
 	#M-AILABS (and other datasets) trim params
 	trim_fft_size = 512,

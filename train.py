@@ -38,7 +38,8 @@ from torch.utils.data import DataLoader
 
 import torch.distributed as dist
 
-#from apex.parallel import DistributedDataParallel as DDP
+from apex import amp
+from apex.parallel import DistributedDataParallel as DDP
 
 from tacotron2.loader import parse_tacotron2_args
 from tacotron2.loader import get_tacotron2_model
@@ -51,10 +52,6 @@ import dllogger.logger as dllg
 from dllogger import tags
 from dllogger.autologging import log_hardware, log_args
 from scipy.io.wavfile import write as write_wav
-
-# from apex import amp
-# amp.lists.functional_overrides.FP32_FUNCS.remove('softmax')
-# amp.lists.functional_overrides.FP16_FUNCS.append('softmax')
 
 
 def parse_args(parser):
@@ -251,7 +248,7 @@ def main():
     optimizer = torch.optim.Adam(model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
 
     if args.amp_run:
-        model, optimizer = amp.initialize(model, optimizer, opt_level="O1")
+        model, optimizer = amp.initialize(model, optimizer, opt_level='O0')
         if distributed_run:
             model = DDP(model)
 
