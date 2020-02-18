@@ -12,11 +12,8 @@ def preprocess(args, input_folders, output_dir, hparams):
 	max_text_lens, max_mel_lens, max_timestep_lens = [], [], []
 
 	for input_dir in input_folders:
-		wav_dir = os.path.join(output_dir, input_dir.split('/')[-1])
-		mel_dir = os.path.join(output_dir, input_dir.split('/')[-1])
-		if hparams.vocoder == 'wavernn':
-			wav_dir = os.path.join(wav_dir, 'audio')
-			mel_dir = os.path.join(mel_dir, 'mels')
+		wav_dir = os.path.join(output_dir, input_dir.split('/')[-1], 'audio')
+		mel_dir = os.path.join(output_dir, input_dir.split('/')[-1], 'mels')
 		os.makedirs(wav_dir, exist_ok=True)
 		os.makedirs(mel_dir, exist_ok=True)
 
