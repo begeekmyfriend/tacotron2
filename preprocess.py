@@ -14,7 +14,7 @@ def preprocess(args, input_folders, output_dir, hparams):
 	for input_dir in input_folders:
 		wav_dir = os.path.join(output_dir, input_dir.split('/')[-1])
 		mel_dir = os.path.join(output_dir, input_dir.split('/')[-1])
-		if hparams.vocoder != 'melgan':
+		if hparams.vocoder == 'wavernn':
 			wav_dir = os.path.join(wav_dir, 'audio')
 			mel_dir = os.path.join(mel_dir, 'mels')
 		os.makedirs(wav_dir, exist_ok=True)
