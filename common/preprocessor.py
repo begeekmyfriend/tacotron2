@@ -74,8 +74,6 @@ def _process_utterance(wav_dir, mel_dir, basename, wav_file, text, hparams):
 	if hparams.trim_silence:
 		wav = audio.trim_silence(wav)
 
-	out = audio.encode_mu_law(wav, mu=512) if hparams.vocoder == 'wavernn' else wav
-
 	# Compute the mel scale spectrogram from the wav
 	mel_spectrogram = audio.melspectrogram(wav).astype(np.float32)
 	mel_frames = mel_spectrogram.shape[1]
@@ -87,15 +85,14 @@ def _process_utterance(wav_dir, mel_dir, basename, wav_file, text, hparams):
 	#time resolution adjustement
 	#ensure length of raw audio is multiple of hop size so that we can use
 	#transposed convolution to upsample
-	r = mel_frames * audio.get_hop_size() - len(out)
-	out = np.pad(out, (0, r), mode='constant', constant_values=0.)
-	assert len(out) == mel_frames * audio.get_hop_size()
-	time_steps = len(out)
+	r = mel_frames * audio.get_hop_size() - len(wav)
+	wav = np.pad(wav, (0, r), mode='constant', constant_values=0.)
+	assert len(wav) == mel_frames * audio.get_hop_size()
+	time_steps = len(wav)
 
 	# Write the spectrogram and audio to disk
 	filename = f'{basename}.npy'
-	if hparams.vocoder == 'wavernn': out = out.astype(np.int16)
-	np.save(os.path.join(wav_dir, filename), out, allow_pickle=False)
+	np.save(os.path.join(wav_dir, filename), wav, allow_pickle=False)
 	np.save(os.path.join(mel_dir, filename), mel_spectrogram, allow_pickle=False)
 
 	# Return a tuple describing this training example

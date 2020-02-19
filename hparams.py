@@ -28,7 +28,6 @@ hparams = tf.contrib.training.HParams(
 	sample_rate = 22050, #22050 Hz (corresponding to ljspeech dataset)
 	frame_shift_ms = None,
 	preemphasis = 0.97, # preemphasis coefficient
-	vocoder = 'wavernn', # Could be 'wavernn' or 'melgan'
 
 	#Multi-speaker batch_size should be integer multiplies number of speakers.
 	anchor_dirs = ['tts_fanfanli_22050', 'tts_xiaoya_22050', 'tts_yangluzhuo_22050', 'tts_yuanzhonglu_22050'],
