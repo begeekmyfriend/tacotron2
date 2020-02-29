@@ -39,12 +39,12 @@ hparams = tf.contrib.training.HParams(
 
 	#Mel and Linear spectrograms normalization/scaling and clipping
 	signal_normalization = True,
-	allow_clipping_in_normalization = False, #Only relevant if mel_normalization = True
+	allow_clipping_in_normalization = True, #Only relevant if mel_normalization = True
 	symmetric_mels = True, #Whether to scale the data to be symmetric around 0
 	max_abs_value = 4., #max absolute value of data. If symmetric, data will be [-max, max] else [0, max]
 
 	#Limits
-	min_level_db = -120,
+	min_level_db = -100,
 	ref_level_db = 20,
 	fmin = 50, #Set this to 75 if your speaker is male! if female, 125 should help taking off noise. (To test depending on dataset)
 	fmax = 7600,
