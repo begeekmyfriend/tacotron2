@@ -296,7 +296,8 @@ def main():
             optimizer.zero_grad()
             x, y, num_frames = batch_to_gpu(batch)
 
-            y_pred = model(x)
+            outputs = model(x)
+            y_pred = [output.cpu() for output in outputs]
 
             loss = criterion(y_pred, y)
 
@@ -306,6 +307,7 @@ def main():
             else:
                 reduced_loss = loss.item()
                 reduced_num_frames = num_frames.item()
+
             if np.isnan(reduced_loss):
                 raise Exception("loss is NaN")
 
@@ -363,8 +365,9 @@ def main():
         # Plot alignemnt
         if epoch % args.epochs_per_alignment == 0 and args.rank == 0:
             alignments = y_pred[3].data.numpy()
+            dec_steps = alignments.shape[-1]
             index = np.random.randint(len(alignments))
-            plot_alignment(alignments[index].transpose(0, 1), # [enc_step, dec_step]
+            plot_alignment(alignments[index][:,:dec_steps // args.n_frames_per_step], # [enc_step, dec_step]
                            os.path.join(args.output_directory, f"align_{epoch:04d}_{iteration}.png"),
                            info=f"{datetime.now().strftime('%Y-%m-%d %H:%M')} Epoch={epoch:04d} Iteration={iteration} Average loss={train_epoch_avg_loss/num_iters:.5f}")
 

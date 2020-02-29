@@ -293,8 +293,8 @@ class Decoder(nn.Module):
         gate_outpust: gate output energies
         alignments:
         """
-        # (T_out, B, T_in) -> (B, T_out, T_in)
-        alignments = torch.stack(alignments).transpose(0, 1)
+        # (T_out, B, T_in) -> (B, T_in, T_out)
+        alignments = torch.stack(alignments).transpose(0, 1).transpose(1, 2).contiguous()
         # (T_out, B, n_frames_per_step) -> (B, T_out, n_frames_per_step)
         gate_outputs = torch.stack(gate_outputs).transpose(0, 1)
         # (B, T_out, n_frames_per_step) -> (B, T_out)
@@ -468,7 +468,7 @@ class Tacotron2(nn.Module):
             outputs[1].masked_fill_(mask, 0.0)
             outputs[2].masked_fill_(mask[:, 0, :], 1e3)  # gate energies
 
-        return [output.cpu() for output in outputs]
+        return outputs
 
     def forward(self, inputs, gta=False):
         texts, text_lengths, targets, target_lengths = inputs
