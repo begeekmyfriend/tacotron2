@@ -360,7 +360,7 @@ def main():
         # Store latest checkpoint in each epoch
         model.elapse_epoch()
         checkpoint_path = os.path.join(args.output_directory, args.latest_checkpoint_file)
-        model.restore_checkpoint(checkpoint_path)
+        model.save_checkpoint(checkpoint_path)
 
         # Plot alignemnt
         if epoch % args.epochs_per_alignment == 0 and args.rank == 0:
@@ -375,7 +375,7 @@ def main():
         if epoch % args.epochs_per_checkpoint == 0 and args.rank == 0:
             checkpoint_path = os.path.join(args.output_directory, f"checkpoint_{epoch:04d}.pt")
             print(f"Saving model and optimizer state at epoch {epoch:04d} to {checkpoint_path}")
-            model.restore_checkpoint(checkpoint_path)
+            model.save_checkpoint(checkpoint_path)
 
             # Save evaluation
             # save_sample(model, args.tacotron2_checkpoint, args.phrase_path,

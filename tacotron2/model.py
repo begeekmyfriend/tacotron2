@@ -500,6 +500,9 @@ class Tacotron2(nn.Module):
     def get_elapsed_epochs(self):
         return self.elapsed_epochs
 
+    def save_checkpoint(self, filepath):
+        torch.save({'epoch': self.elapsed_epochs, 'model': self.state_dict()}, filepath)
+
     def restore_checkpoint(self, filepath):
         if os.path.exists(filepath) :
             def _checkpoint_from_distributed(state_dict):
@@ -509,12 +512,10 @@ class Tacotron2(nn.Module):
                 GPU inference.
                 :param state_dict: model's state dict
                 """
-                ret = False
                 for key, _ in state_dict.items():
                     if key.find('module.') != -1:
-                        ret = True
-                        break
-                return ret
+                        return True
+                return False
 
             def _unwrap_distributed(state_dict):
                 """
@@ -535,6 +536,3 @@ class Tacotron2(nn.Module):
             if _checkpoint_from_distributed(checkpoint['model']):
                 checkpoint['model'] = _unwrap_distributed(checkpoint['model'])
             self.load_state_dict(checkpoint['model'])
-        else:
-            torch.save({'epoch': self.elapsed_epochs,
-                        'model': self.state_dict()}, filepath)
