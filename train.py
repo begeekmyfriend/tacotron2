@@ -35,6 +35,7 @@ from datetime import datetime
 from plot import plot_alignment
 import torch
 from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
 
 import torch.distributed as dist
 
@@ -247,6 +248,8 @@ def main():
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
 
+    writer = SummaryWriter(args.output_directory)
+
     if args.amp_run:
         model, optimizer = amp.initialize(model, optimizer, opt_level='O0')
         if distributed_run:
@@ -331,6 +334,8 @@ def main():
 
             iteration += 1
 
+            writer.add_scalar('Training/Loss', reduced_loss, iteration)
+
             LOGGER.log(key=tags.TRAIN_ITER_STOP, value=i)
 
             iter_stop_time = time.time()
@@ -365,9 +370,8 @@ def main():
         # Plot alignemnt
         if epoch % args.epochs_per_alignment == 0 and args.rank == 0:
             alignments = y_pred[3].data.numpy()
-            dec_steps = alignments.shape[-1]
             index = np.random.randint(len(alignments))
-            plot_alignment(alignments[index][:,:dec_steps // args.n_frames_per_step], # [enc_step, dec_step]
+            plot_alignment(alignments[index], # [enc_step, dec_step]
                            os.path.join(args.output_directory, f"align_{epoch:04d}_{iteration}.png"),
                            info=f"{datetime.now().strftime('%Y-%m-%d %H:%M')} Epoch={epoch:04d} Iteration={iteration} Average loss={train_epoch_avg_loss/num_iters:.5f}")
 
@@ -389,6 +393,7 @@ def main():
     LOGGER.log(key=tags.RUN_FINAL)
 
     print("training time", run_stop_time - run_start_time)
+    writer.close()
 
     LOGGER.timed_block_stop("run")
 
