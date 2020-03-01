@@ -157,7 +157,8 @@ def main():
         text_lengths = torch.IntTensor([sequence.size(1)]).cuda().long()
         for i in range(3):
             with torch.no_grad():
-                _, mels, _, _, mel_lengths = model.infer(sequences, text_lengths)
+                outputs = model.infer(sequences, text_lengths)
+                _, mels, _, _, mel_lengths = [output.cpu() for output in outputs]
 
     os.makedirs(args.output, exist_ok=True)
 

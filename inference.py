@@ -172,7 +172,8 @@ def main():
     sequences, text_lengths, ids_sorted_decreasing = prepare_input_sequence(sentences, args.speaker_id)
 
     with torch.no_grad(), MeasureTime(measurements, "tacotron2_time"):
-        _, mels, _, _, mel_lengths = model.infer(sequences, text_lengths)
+        outputs = model.infer(sequences, text_lengths)
+        _, mels, _, _, mel_lengths = [output.cpu() for output in outputs]
 
     tacotron2_infer_perf = mels.size(0)*mels.size(2)/measurements['tacotron2_time']
 
