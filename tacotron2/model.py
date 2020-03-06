@@ -346,7 +346,7 @@ class Decoder(nn.Module):
         gate_output = self.gate_layer(x)
         return mel_output, gate_output, self.attention_weights
 
-    def forward(self, memory, targets, memory_lengths, gta=False):
+    def forward(self, memory, memory_lengths, targets):
         """ Decoder forward pass for training
         PARAMS
         ------
@@ -364,7 +364,7 @@ class Decoder(nn.Module):
         # (B, n_mel_channels, T_out) -> (T_out, B, n_mel_channels)
         targets = targets.permute(2, 0, 1)
         decoder_inputs = torch.cat((go_frame, targets), dim=0)
-        prenet_outputs = self.prenet(decoder_inputs, inference=gta)
+        prenet_outputs = self.prenet(decoder_inputs)
 
         mask =~ get_mask_from_lengths(memory_lengths) if memory.size(0) > 1 else None
         self.initialize_decoder_states(memory, mask)
@@ -393,8 +393,6 @@ class Decoder(nn.Module):
         gate_outputs: gate outputs from the decoder
         alignments: sequence of attention weights from the decoder
         """
-        frame = memory.new(memory.size(0), self.n_mel_channels).zero_()
-
         mask =~ get_mask_from_lengths(memory_lengths) if memory.size(0) > 1 else None
         self.initialize_decoder_states(memory, mask)
 
@@ -403,6 +401,7 @@ class Decoder(nn.Module):
             mel_lengths = mel_lengths.cuda()
 
         mel_outputs, gate_outputs, alignments = [], [], []
+        frame = memory.new(memory.size(0), self.n_mel_channels).zero_()
         while True:
             prenet_output = self.prenet(frame, inference=True)
 
@@ -426,6 +425,41 @@ class Decoder(nn.Module):
             frame = mel_output[:, :self.n_mel_channels]
 
         return self.parse_decoder_outputs(mel_outputs, gate_outputs, alignments, mel_lengths)
+
+    def gta(self, memory, memory_lengths, targets):
+        """ Decoder forward pass for training
+        PARAMS
+        ------
+        memory: Encoder outputs
+        memory_lengths: Encoder output lengths for attention masking.
+        targets: Decoder inputs for teacher forcing. i.e. mel-specs
+
+        RETURNS
+        -------
+        mel_outputs: mel outputs from the decoder
+        gate_outputs: gate outputs from the decoder
+        alignments: sequence of attention weights from the decoder
+        """
+        go_frame = memory.new(memory.size(0), self.n_mel_channels).zero_().unsqueeze(0)
+        # (B, n_mel_channels, T_out) -> (T_out, B, n_mel_channels)
+        targets = targets.permute(2, 0, 1)
+        decoder_inputs = torch.cat((go_frame, targets), dim=0)
+        prenet_outputs = self.prenet(decoder_inputs, inference=True)
+
+        mask =~ get_mask_from_lengths(memory_lengths) if memory.size(0) > 1 else None
+        self.initialize_decoder_states(memory, mask)
+
+        mel_outputs, gate_outputs, alignments = [], [], []
+        # size - 1 for ignoring EOS synbol
+        while len(mel_outputs) < decoder_inputs.size(0) - 1:
+            prenet_output = prenet_outputs[len(mel_outputs)]
+            mel_output, gate_output, attention_weights = self.decode(prenet_output)
+
+            mel_outputs += [mel_output]
+            gate_outputs += [gate_output]
+            alignments += [attention_weights]
+
+        return self.parse_decoder_outputs(mel_outputs, gate_outputs, alignments)
 
 
 class Tacotron2(nn.Module):
@@ -470,7 +504,7 @@ class Tacotron2(nn.Module):
 
         return outputs
 
-    def forward(self, inputs, gta=False):
+    def forward(self, inputs):
         texts, text_lengths, targets, target_lengths = inputs
 
         # [B, T_in] -> [B, embed_dim, T_in]
@@ -478,18 +512,22 @@ class Tacotron2(nn.Module):
         # [B, T_in, encoder_dim]
         encoder_outputs = self.encoder(embedded_inputs, text_lengths)
 
-        mel_outputs_before, gate_outputs, alignments, _ = self.decoder(encoder_outputs, targets, text_lengths, gta)
+        mel_outputs_before, gate_outputs, alignments, _ = self.decoder(encoder_outputs, text_lengths, targets)
         mel_outputs_after = mel_outputs_before + self.postnet(mel_outputs_before)
 
         return self.parse_outputs([mel_outputs_before, mel_outputs_after, gate_outputs, alignments])
 
-    def infer(self, texts, text_lengths):
+    def infer(self, texts, text_lengths, targets=None, target_lengths=None):
         # [B, T_in] -> [B, embed_dim, T_in]
         embedded_inputs = self.embedding(texts).transpose(1, 2)
         # [B, T_in, encoder_dim]
         encoder_outputs = self.encoder(embedded_inputs, text_lengths)
 
-        mel_outputs_before, gate_outputs, alignments, mel_lengths = self.decoder.infer(encoder_outputs, text_lengths)
+        if targets is None:
+            mel_outputs_before, gate_outputs, alignments, mel_lengths = self.decoder.infer(encoder_outputs, text_lengths)
+        else:
+            mel_outputs_before, gate_outputs, alignments, mel_lengths = self.decoder.gta(encoder_outputs, text_lengths, targets)
+
         mel_outputs_after = mel_outputs_before + self.postnet(mel_outputs_before)
 
         return self.parse_outputs([mel_outputs_before, mel_outputs_after, gate_outputs, alignments, mel_lengths])

@@ -58,10 +58,10 @@ class TextMelDataset(torch.utils.data.Dataset):
             random.shuffle(self.metadatas[i])
 
     def get_mel_text_pair(self, speaker_id, metadata):
-        npy_mel, text = metadata
+        mel_path, text = metadata
         seq_len = len(text)
         seq = self.get_sequence(text, speaker_id)
-        mel = self.get_mel(npy_mel)
+        mel = self.get_mel(mel_path)
         return (seq, mel, seq_len)
 
     def get_mel(self, filename):

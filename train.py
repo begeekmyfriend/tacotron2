@@ -55,12 +55,12 @@ from dllogger.autologging import log_hardware, log_args
 from scipy.io.wavfile import write as write_wav
 
 
-def parse_args(parser):
+def parse_training_args(parser):
     """
     Parse commandline arguments.
     """
 
-    parser.add_argument('-o', '--output_directory', type=str, default='logs', required=True, help='Directory to save checkpoints')
+    parser.add_argument('-o', '--output_dir', type=str, default='logs', required=True, help='Directory to save checkpoints')
     parser.add_argument('-d', '--dataset-path', type=str, default='filelists', help='Path to dataset')
     parser.add_argument('--log-file', type=str, default='nvlog.json', help='Filename for logging')
     parser.add_argument('--latest-checkpoint-file', type=str, default='checkpoint_latest.pt', help='Store the latest checkpoint in each epoch')
@@ -69,7 +69,7 @@ def parse_args(parser):
 
     # training
     training = parser.add_argument_group('training setup')
-    training.add_argument('--epochs', type=int, required=True, help='Number of total epochs to run')
+    training.add_argument('--epochs', type=int, default=500, help='Number of total epochs to run')
     training.add_argument('--epochs-per-alignment', type=int, default=1, help='Number of epochs per alignment')
     training.add_argument('--epochs-per-checkpoint', type=int, default=50, help='Number of epochs per checkpoint')
     training.add_argument('--seed', type=int, default=1234, help='Seed for PyTorch random number generators')
@@ -81,11 +81,11 @@ def parse_args(parser):
 
     optimization = parser.add_argument_group('optimization setup')
     optimization.add_argument('--use-saved-learning-rate', default=False, type=bool)
-    optimization.add_argument('--init-lr', '--initial-learning-rate', default=1e-3, type=float, required=True, help='Initial learing rate')
-    optimization.add_argument('--final-lr', '--final-learning-rate', default=1e-5, type=float, required=True, help='Final earing rate')
+    optimization.add_argument('--init-lr', '--initial-learning-rate', default=1e-3, type=float, help='Initial learing rate')
+    optimization.add_argument('--final-lr', '--final-learning-rate', default=1e-5, type=float, help='Final earing rate')
     optimization.add_argument('--weight-decay', default=1e-6, type=float, help='Weight decay')
     optimization.add_argument('--grad-clip-thresh', default=1.0, type=float, help='Clip threshold for gradients')
-    optimization.add_argument('-bs', '--batch-size', default=32, type=int, required=True, help='Batch size per GPU')
+    optimization.add_argument('-bs', '--batch-size', default=32, type=int, help='Batch size per GPU')
 
     # dataset parameters
     dataset = parser.add_argument_group('dataset parameters')
@@ -109,7 +109,7 @@ def parse_args(parser):
     distributed.add_argument('--rank', default=0, type=int, help='Rank of the process, do not set! Done by multiproc module')
     distributed.add_argument('--world-size', default=1, type=int, help='Number of processes, do not set! Done by multiproc module')
     distributed.add_argument('--dist-url', type=str, default='tcp://localhost:23456', help='Url used to set up distributed training')
-    distributed.add_argument('--group-name', type=str, default='group_name', required=False, help='Distributed group name')
+    distributed.add_argument('--group-name', type=str, default='group_name', help='Distributed group name')
     distributed.add_argument('--dist-backend', default='nccl', type=str, choices={'nccl'}, help='Distributed run backend')
 
     return parser
@@ -200,13 +200,13 @@ def adjust_learning_rate(optimizer, epoch, args):
 def main():
 
     parser = argparse.ArgumentParser(description='PyTorch Tacotron 2 Training')
-    parser = parse_args(parser)
+    parser = parse_training_args(parser)
     args, _ = parser.parse_known_args()
 
     LOGGER.set_model_name("Tacotron2_PyT")
     LOGGER.set_backends([
         dllg.StdOutBackend(log_file=None, logging_scope=dllg.TRAIN_ITER_SCOPE, iteration_interval=1),
-        dllg.JsonBackend(log_file=os.path.join(args.output_directory, args.log_file) if args.rank == 0 else None,
+        dllg.JsonBackend(log_file=os.path.join(args.output_dir, args.log_file) if args.rank == 0 else None,
                          logging_scope=dllg.TRAIN_ITER_SCOPE, iteration_interval=1)
     ])
 
@@ -234,7 +234,7 @@ def main():
     if distributed_run:
         init_distributed(args, args.world_size, args.rank, args.group_name)
 
-    os.makedirs(args.output_directory, exist_ok=True)
+    os.makedirs(args.output_dir, exist_ok=True)
 
     LOGGER.log(key=tags.RUN_START)
     run_start_time = time.time()
@@ -244,11 +244,11 @@ def main():
     if not args.amp_run and distributed_run:
         model = DDP(model)
 
-    model.restore_checkpoint(os.path.join(args.output_directory, args.latest_checkpoint_file))
+    model.restore_checkpoint(os.path.join(args.output_dir, args.latest_checkpoint_file))
 
     optimizer = torch.optim.Adam(model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay)
 
-    writer = SummaryWriter(args.output_directory)
+    writer = SummaryWriter(args.output_dir)
 
     if args.amp_run:
         model, optimizer = amp.initialize(model, optimizer, opt_level='O0')
@@ -364,7 +364,7 @@ def main():
 
         # Store latest checkpoint in each epoch
         model.elapse_epoch()
-        checkpoint_path = os.path.join(args.output_directory, args.latest_checkpoint_file)
+        checkpoint_path = os.path.join(args.output_dir, args.latest_checkpoint_file)
         model.save_checkpoint(checkpoint_path)
 
         # Plot alignemnt
@@ -372,18 +372,18 @@ def main():
             alignments = y_pred[3].data.numpy()
             index = np.random.randint(len(alignments))
             plot_alignment(alignments[index], # [enc_step, dec_step]
-                           os.path.join(args.output_directory, f"align_{epoch:04d}_{iteration}.png"),
+                           os.path.join(args.output_dir, f"align_{epoch:04d}_{iteration}.png"),
                            info=f"{datetime.now().strftime('%Y-%m-%d %H:%M')} Epoch={epoch:04d} Iteration={iteration} Average loss={train_epoch_avg_loss/num_iters:.5f}")
 
         # Save checkpoint
         if epoch % args.epochs_per_checkpoint == 0 and args.rank == 0:
-            checkpoint_path = os.path.join(args.output_directory, f"checkpoint_{epoch:04d}.pt")
+            checkpoint_path = os.path.join(args.output_dir, f"checkpoint_{epoch:04d}.pt")
             print(f"Saving model and optimizer state at epoch {epoch:04d} to {checkpoint_path}")
             model.save_checkpoint(checkpoint_path)
 
             # Save evaluation
             # save_sample(model, args.tacotron2_checkpoint, args.phrase_path,
-            #             os.path.join(args.output_directory, f"sample_{epoch:04d}_{iteration}.wav"), args.sampling_rate)
+            #             os.path.join(args.output_dir, f"sample_{epoch:04d}_{iteration}.wav"), args.sampling_rate)
 
         LOGGER.epoch_stop()
 
