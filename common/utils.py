@@ -46,18 +46,18 @@ def get_mask_from_lengths(lengths):
     return mask
 
 
-def load_wav_to_torch(full_path):
-    sampling_rate, data = read(full_path)
-    return torch.FloatTensor(data.astype(np.float32)), sampling_rate
+def load_wav_to_torch(path):
+    wav = np.load(path)
+    return torch.FloatTensor(wav.astype(np.float32))
 
 
 def load_metadata(dirname, filename='train.txt', split="|"):
     with open(os.path.join(dirname, filename)) as f:
         def split_line(line):
             parts = line.strip().split(split)
-            mel_path = os.path.join(dirname, 'mels', parts[0])
+            wav_path = os.path.join(dirname, 'audio', parts[0])
             text = parts[-1]
-            return mel_path, text
+            return wav_path, text
         return [split_line(line) for line in f.readlines()]
 
 

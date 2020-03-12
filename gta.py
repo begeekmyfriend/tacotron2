@@ -152,9 +152,10 @@ def main():
                 mel = torch.from_numpy(np.load(mel_path))
                 max_target_len = mel.size(1)
                 max_target_len += args.n_frames_per_step - max_target_len % args.n_frames_per_step
-                padded_mel = np.pad(mel, [(0, 0), (0, max_target_len - mel.size(1))], mode='constant', constant_values=args.mel_pad_val)
+                padded_mel = np.pad(mel, [(0, 0), (0, max_target_len - mel.size(1))], mode='constant')
                 target = padded_mel[:, ::args.n_frames_per_step]
                 targets = torch.from_numpy(np.stack(target)).unsqueeze(0)
+                targets = targets * 8 - 4
                 target_lengths = torch.IntTensor([target.shape[1]])
                 outputs = model.infer(to_gpu(seqs).long(), to_gpu(seq_lens).int(), to_gpu(targets).float(), to_gpu(target_lengths).int())
                 _, mel_outs, _, _ = [output.cpu() for output in outputs if output is not None]

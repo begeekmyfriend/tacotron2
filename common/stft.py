@@ -34,7 +34,7 @@ import torch
 import numpy as np
 import torch.nn.functional as F
 from torch.autograd import Variable
-from scipy.signal import get_window
+from scipy.signal import get_window, lfilter
 from librosa.util import pad_center, tiny
 from common.audio_processing import window_sumsquare
 
@@ -131,7 +131,13 @@ class STFT(torch.nn.Module):
 
         return inverse_transform
 
+    def preemphasize(wav, k=0.97):
+        return lfilter([1, -k], [1], wav)
+
+    def inv_preemphasize(wav, k=0.97):
+        return lfilter([1], [1, -k], wav)
+
     def forward(self, input_data):
-        self.magnitude, self.phase = self.transform(input_data)
+        self.magnitude, self.phase = self.transform(preemphasis(input_data))
         reconstruction = self.inverse(self.magnitude, self.phase)
         return reconstruction
