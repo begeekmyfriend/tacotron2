@@ -131,13 +131,7 @@ class STFT(torch.nn.Module):
 
         return inverse_transform
 
-    def preemphasize(wav, k=0.97):
-        return lfilter([1, -k], [1], wav)
-
-    def inv_preemphasize(wav, k=0.97):
-        return lfilter([1], [1, -k], wav)
-
     def forward(self, input_data):
-        self.magnitude, self.phase = self.transform(preemphasis(input_data))
+        self.magnitude, self.phase = self.transform(input_data)
         reconstruction = self.inverse(self.magnitude, self.phase)
         return reconstruction

@@ -27,8 +27,9 @@
 
 import torch
 import numpy as np
-from scipy.signal import get_window
 import librosa.util as librosa_util
+from scipy.signal import get_window
+from .utils import de_emphasize
 
 
 def window_sumsquare(window, n_frames, hop_length=256, win_length=1024,
@@ -99,7 +100,7 @@ def griffin_lim(magnitudes, stft_fn, n_iters=30):
     for i in range(n_iters):
         _, angles = stft_fn.transform(signal)
         signal = stft_fn.inverse(magnitudes, angles).squeeze(1)
-    return signal
+    return de_emphasize(signal.numpy())
 
 
 def dynamic_range_compression(x, C=1, clip_val=1e-5):

@@ -27,6 +27,7 @@
 
 import numpy as np
 from scipy.io.wavfile import read
+from scipy import signal
 import math
 import torch
 import os
@@ -46,8 +47,17 @@ def get_mask_from_lengths(lengths):
     return mask
 
 
-def load_wav_to_torch(path):
+def preemphasize(wav, k=0.97):
+    return signal.lfilter([1, -k], [1], wav)
+
+
+def de_emphasize(wav, k=0.97):
+    return signal.lfilter([1], [1, -k], wav)
+
+
+def load_wav_to_torch(path, max_value=32768):
     wav = np.load(path)
+    wav = preemphasize(wav)
     return torch.FloatTensor(wav.astype(np.float32))
 
 

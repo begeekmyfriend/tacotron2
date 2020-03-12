@@ -47,7 +47,6 @@ class TextMelDataset(torch.utils.data.Dataset):
         self.metadatas = [load_metadata(meta_dir) for meta_dir in self.meta_dirs]
         self.offsets = [0] * self.speaker_num
         self.text_cleaners = args.text_cleaners
-        self.max_wav_value = args.max_wav_value
         self.sampling_rate = args.sampling_rate
         # self.load_mel_from_disk = args.load_mel_from_disk
         self.stft = TacotronSTFT(args.filter_length, args.hop_length, args.win_length,
@@ -67,9 +66,7 @@ class TextMelDataset(torch.utils.data.Dataset):
     def get_mel(self, filename):
         if True:#not self.load_mel_from_disk:
             audio = load_wav_to_torch(filename)
-            audio_norm = audio / self.max_wav_value
-            audio_norm = audio_norm.unsqueeze(0)
-            melspec = self.stft.mel_spectrogram(audio_norm)
+            melspec = self.stft.mel_spectrogram(audio.unsqueeze(0))
             melspec = torch.squeeze(melspec, 0)
             melspec = melspec * 8 - 4
         else:
