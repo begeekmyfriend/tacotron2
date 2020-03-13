@@ -68,7 +68,6 @@ class TextMelDataset(torch.utils.data.Dataset):
             audio = load_wav_to_torch(filename)
             melspec = self.stft.mel_spectrogram(audio.unsqueeze(0))
             melspec = torch.squeeze(melspec, 0)
-            melspec = melspec * 8 - 4
         else:
             melspec = torch.from_numpy(np.load(filename))
             assert melspec.size(0) == self.stft.n_mel_channels, (
@@ -94,6 +93,7 @@ class TextMelCollate():
     """
     def __init__(self, args):
         self.n_frames_per_step = args.n_frames_per_step
+        self.mel_pad_val = args.mel_pad_val
 
     def __call__(self, batch):
         """Collate's training batch from normalized text and mel-spectrogram
@@ -130,7 +130,7 @@ class TextMelCollate():
             mel = batch[ids_sorted_decreasing[i]][1]
             target_lengths[i] = mel.shape[1]
             gates[i, mel.shape[1] - 1:] = 1
-            padded_mel = np.pad(mel, [(0, 0), (0, max_target_len - mel.size(1))], mode='constant')
+            padded_mel = np.pad(mel, [(0, 0), (0, max_target_len - mel.size(1))], mode='constant', constant_values=self.mel_pad_val)
             targets.append(padded_mel)
             reduced_mel = padded_mel[:, ::self.n_frames_per_step]
             reduced_targets.append(reduced_mel)

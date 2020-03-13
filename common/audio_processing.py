@@ -100,7 +100,7 @@ def griffin_lim(magnitudes, stft_fn, n_iters=30):
     for i in range(n_iters):
         _, angles = stft_fn.transform(signal)
         signal = stft_fn.inverse(magnitudes, angles).squeeze(1)
-    return de_emphasize(signal.numpy())
+    return de_emphasize(signal)
 
 
 def dynamic_range_compression(x, C=1, clip_val=1e-5):
