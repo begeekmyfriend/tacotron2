@@ -33,10 +33,13 @@ import time
 import torch
 from apex import amp
 from common import audio
+from common.audio_processing import griffin_lim
+from common.layers import TacotronSTFT
 from scipy.io.wavfile import write
 from tacotron2.loader import parse_tacotron2_args
 from tacotron2.loader import get_tacotron2_model
 from tacotron2.text import text_to_sequence
+from train import parse_training_args
 from dllogger.logger import LOGGER
 import dllogger.logger as dllg
 from dllogger.autologging import log_hardware, log_args
@@ -47,13 +50,9 @@ def parse_args(parser):
     Parse commandline arguments.
     """
     parser.add_argument('-i', '--input-file', type=str, default="text.txt", help='full path to the input text (phareses separated by new line)')
-    parser.add_argument('-o', '--output', type=str, default="outputs", help='output folder to save audio (file per phrase)')
     parser.add_argument('--checkpoint', type=str, default="logs/checkpoint_latest.pt", help='full path to the Tacotron2 model checkpoint file')
     parser.add_argument('-id', '--speaker-id', default=0, type=int, help='Speaker identity')
     parser.add_argument('-sn', '--speaker-num', default=1, type=int, help='Speaker number')
-    parser.add_argument('-sr', '--sampling-rate', default=22050, type=int, help='Sampling rate')
-    parser.add_argument('--amp-run', action='store_true', help='inference with AMP')
-    parser.add_argument('--log-file', type=str, default='nvlog.json', help='Filename for logging')
     parser.add_argument('--include-warmup', action='store_true', help='Include warmup')
 
     return parser
@@ -77,7 +76,7 @@ def load_and_setup_model(parser, args):
     if args.amp_run:
         model, _ = amp.initialize(model, [], opt_level='O0')
 
-    return model
+    return model, args
 
 
 # taken from tacotron2/data_function.py:TextMelCollate.__call__
@@ -131,6 +130,7 @@ def main():
     Inference is executed on a single GPU.
     """
     parser = argparse.ArgumentParser(description='PyTorch Tacotron 2 Inference')
+    parser = parse_training_args(parser)
     parser = parse_args(parser)
     args, _ = parser.parse_known_args()
 
@@ -143,18 +143,10 @@ def main():
     LOGGER.register_metric("tacotron2_latency", metric_scope=dllg.TRAIN_ITER_SCOPE)
     LOGGER.register_metric("latency", metric_scope=dllg.TRAIN_ITER_SCOPE)
 
-    model = load_and_setup_model(parser, args)
+    model, args = load_and_setup_model(parser, args)
 
     log_hardware()
     log_args(args)
-
-    if args.include_warmup:
-        sequences = torch.randint(low=0, high=148, size=(1,50),
-                                  dtype=torch.long).cuda()
-        text_lengths = torch.IntTensor([sequence.size(1)]).cuda().long()
-        for i in range(3):
-            with torch.no_grad():
-                _, mels, _, _, mel_lengths = model.infer(sequences, text_lengths)
 
     try:
         f = open(args.input_file)
@@ -163,7 +155,7 @@ def main():
         f = open(args.input_file, encoding='gbk')
         sentences = list(map(lambda s : s.strip(), f.readlines()))
 
-    os.makedirs(args.output, exist_ok=True)
+    os.makedirs(args.output_dir, exist_ok=True)
 
     LOGGER.iteration_start()
 
@@ -184,12 +176,15 @@ def main():
     LOGGER.finish()
 
     # recover to the original order and concatenate
+    stft = TacotronSTFT(args.filter_length, args.hop_length, args.win_length,
+                        args.n_mel_channels, args.sampling_rate, args.mel_fmin, args.mel_fmax)
     ids_sorted_decreasing = ids_sorted_decreasing.numpy().tolist()
     mels = [mel[:, :length] for mel, length in zip(mels, mel_lengths)]
     mels = [mels[ids_sorted_decreasing.index(i)] for i in range(len(ids_sorted_decreasing))]
-    wav = audio.inv_mel_spectrogram(np.concatenate(mels, axis=-1))
-    audio.save_wav(wav, os.path.join(args.output, 'eval.wav'))
-    np.save(os.path.join(args.output, 'eval.npy'), np.concatenate(mels, axis=-1), allow_pickle=False)
+    magnitudes = stft.inv_mel_spectrogram(torch.cat(mels, axis=-1))
+    wav = griffin_lim(magnitudes.unsqueeze(0), stft.stft_fn, 60)
+    audio.save_wav(wav.squeeze(), os.path.join(args.output_dir, 'eval.wav'))
+    np.save(os.path.join(args.output_dir, 'eval.npy'), np.concatenate(mels, axis=-1), allow_pickle=False)
 
 
 if __name__ == '__main__':

@@ -71,8 +71,13 @@ class TacotronSTFT(torch.nn.Module):
         self.sampling_rate = sampling_rate
         self.stft_fn = STFT(filter_length, hop_length, win_length)
         mel_basis = librosa.filters.mel(sampling_rate, filter_length, n_mel_channels, mel_fmin, mel_fmax)
+        import numpy as np
+        inv_mel_basis = np.linalg.pinv(mel_basis)
         mel_basis = torch.from_numpy(mel_basis).float()
+        inv_mel_basis = torch.from_numpy(inv_mel_basis).float()
         self.register_buffer('mel_basis', mel_basis)
+        self.register_buffer('inv_mel_basis', inv_mel_basis)
+
 
     def spectral_normalize(self, magnitudes):
         return dynamic_range_compression(magnitudes)
@@ -98,3 +103,18 @@ class TacotronSTFT(torch.nn.Module):
         mel_output = torch.matmul(self.mel_basis, magnitudes)
         mel_output = self.spectral_normalize(mel_output)
         return mel_output
+
+    def inv_mel_spectrogram(self, mel):
+        """Computes mel-spectrograms from a batch of waves
+        PARAMS
+        ------
+        y: Variable(torch.FloatTensor) with shape (B, T) in range [-1, 1]
+
+        RETURNS
+        -------
+        mel_output: torch.FloatTensor of shape (B, n_mel_channels, T)
+        """
+        mel = self.spectral_de_normalize(mel)
+        magnitudes = torch.matmul(self.inv_mel_basis, mel.data)
+        magnitudes = torch.max(magnitudes.clone().detach().fill_(1e-10), magnitudes)
+        return magnitudes.data
