@@ -38,7 +38,9 @@ from tacotron2.loader import parse_tacotron2_args
 from tacotron2.loader import get_tacotron2_model
 from tacotron2.text import text_to_sequence
 from train import parse_training_args
-from common.utils import load_metadata
+from common.audio_processing import griffin_lim
+from common.layers import TacotronSTFT
+from common.utils import load_metadata, load_wav_to_torch
 from dllogger.logger import LOGGER
 import dllogger.logger as dllg
 from dllogger.autologging import log_hardware, log_args
@@ -142,14 +144,18 @@ def main():
 
     anchor_dirs = [os.path.join(args.dataset_path, anchor) for anchor in args.training_anchor_dirs]
     metadatas = [load_metadata(anchor) for anchor in anchor_dirs]
+    stft = TacotronSTFT(args.filter_length, args.hop_length, args.win_length,
+                        args.n_mel_channels, args.sampling_rate, args.mel_fmin, args.mel_fmax)
     with torch.no_grad(), MeasureTime(measurements, "tacotron2_time"):
         for speaker_id in range(len(anchor_dirs)):
             metadata = metadatas[speaker_id]
-            for mel_path, text in tqdm(metadata):
+            for npy_path, text in tqdm(metadata):
                 seq = text_to_sequence(text, speaker_id, ['basic_cleaners'])
                 seqs = torch.from_numpy(np.stack(seq)).unsqueeze(0)
                 seq_lens = torch.IntTensor([len(text)])
-                mel = torch.from_numpy(np.load(mel_path))
+                wav = load_wav_to_torch(npy_path)
+                mel = stft.mel_spectrogram(wav.unsqueeze(0))
+                mel = mel.squeeze()
                 max_target_len = mel.size(1)
                 max_target_len += args.n_frames_per_step - max_target_len % args.n_frames_per_step
                 padded_mel = np.pad(mel, [(0, 0), (0, max_target_len - mel.size(1))], mode='constant', constant_values=args.mel_pad_val)
@@ -157,9 +163,14 @@ def main():
                 targets = torch.from_numpy(np.stack(target)).unsqueeze(0)
                 target_lengths = torch.IntTensor([target.shape[1]])
                 outputs = model.infer(to_gpu(seqs).long(), to_gpu(seq_lens).int(), to_gpu(targets).float(), to_gpu(target_lengths).int())
-                _, mel_outs, _, _ = [output.cpu() for output in outputs if output is not None]
-                fname = os.path.basename(mel_path)
-                np.save(os.path.join(args.output_dir, fname), mel_outs[0, :, :mel.shape[1]], allow_pickle=False)
+                _, mel_out, _, _ = [output.cpu() for output in outputs if output is not None]
+                fname = os.path.basename(npy_path)
+                np.save(os.path.join(args.output_dir, fname), mel_out.squeeze(), allow_pickle=False)
+                # GTA synthesis
+                # magnitudes = stft.inv_mel_spectrogram(mel_out.squeeze())
+                # wav = griffin_lim(magnitudes, stft.stft_fn, 60)
+                # from common import audio
+                # audio.save_wav(wav, os.path.join(args.output_dir, 'eval.wav'))
 
     LOGGER.log(key="tacotron2_latency", value=measurements['tacotron2_time'])
     LOGGER.log(key="latency", value=(measurements['tacotron2_time']))
