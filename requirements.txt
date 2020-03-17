@@ -1,0 +1,9 @@
+matplotlib
+tensorflow==1.15.0
+numpy
+inflect
+scipy
+Unidecode
+pillow
+apex
+json
