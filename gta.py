@@ -164,8 +164,10 @@ def main():
                 target_lengths = torch.IntTensor([target.shape[1]])
                 outputs = model.infer(to_gpu(seqs).long(), to_gpu(seq_lens).int(), to_gpu(targets).float(), to_gpu(target_lengths).int())
                 _, mel_out, _, _ = [output.cpu() for output in outputs if output is not None]
+                mel_out = mel_out.squeeze()[:, :mel.size(-1)]
+                assert(mel_out.shape[-1] == wav.shape[-1] // args.hop_length)
                 fname = os.path.basename(npy_path)
-                np.save(os.path.join(args.output_dir, fname), mel_out.squeeze(), allow_pickle=False)
+                np.save(os.path.join(args.output_dir, fname), mel_out, allow_pickle=False)
                 # GTA synthesis
                 # magnitudes = stft.inv_mel_spectrogram(mel_out.squeeze())
                 # wav = griffin_lim(magnitudes, stft.stft_fn, 60)
