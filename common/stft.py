@@ -91,7 +91,6 @@ class STFT(torch.nn.Module):
             Variable(self.forward_basis, requires_grad=False),
             stride=self.hop_length,
             padding=0)
-        forward_transform = forward_transform[:, :, :-1]
 
         cutoff = int((self.filter_length / 2) + 1)
         real_part = forward_transform[:, :cutoff, :]
