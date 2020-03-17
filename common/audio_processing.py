@@ -84,14 +84,14 @@ def window_sumsquare(window, n_frames, hop_length=256, win_length=1024,
     return x
 
 
-def griffin_lim(magnitudes, stft_fn, n_iters=30):
+def griffin_lim(magnitudes, stft_fn, n_iters=50, power=1.5):
     """
     PARAMS
     ------
     magnitudes: spectrogram magnitudes
     stft_fn: STFT class with transform (STFT) and inverse (ISTFT) methods
     """
-    magnitudes = magnitudes.unsqueeze(0) ** 1.2
+    magnitudes = magnitudes.unsqueeze(0) ** power
     angles = np.angle(np.exp(2j * np.pi * np.random.rand(*magnitudes.size())))
     angles = angles.astype(np.float32)
     angles = torch.autograd.Variable(torch.from_numpy(angles))

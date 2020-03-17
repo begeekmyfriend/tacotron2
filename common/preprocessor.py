@@ -93,7 +93,6 @@ def _process_utterance(wav_dir, mel_dir, basename, wav_file, text, hparams):
 	# Write the spectrogram and audio to disk
 	filename = f'{basename}.npy'
 	np.save(os.path.join(wav_dir, filename), wav, allow_pickle=False)
-	np.save(os.path.join(mel_dir, filename), mel_spectrogram, allow_pickle=False)
 
 	# Return a tuple describing this training example
 	return (filename, time_steps, mel_frames, text)

@@ -40,7 +40,7 @@ from tacotron2.text import text_to_sequence
 from train import parse_training_args
 from common.audio_processing import griffin_lim
 from common.layers import TacotronSTFT
-from common.utils import load_metadata, load_wav_to_torch
+from common.utils import load_metadata, load_wav_to_torch, save_wav
 from dllogger.logger import LOGGER
 import dllogger.logger as dllg
 from dllogger.autologging import log_hardware, log_args
@@ -169,8 +169,7 @@ def main():
                 # GTA synthesis
                 # magnitudes = stft.inv_mel_spectrogram(mel_out.squeeze())
                 # wav = griffin_lim(magnitudes, stft.stft_fn, 60)
-                # from common import audio
-                # audio.save_wav(wav, os.path.join(args.output_dir, 'eval.wav'))
+                # save_wav(wav, os.path.join(args.output_dir, 'eval.wav'))
 
     LOGGER.log(key="tacotron2_latency", value=measurements['tacotron2_time'])
     LOGGER.log(key="latency", value=(measurements['tacotron2_time']))

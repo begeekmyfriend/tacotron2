@@ -32,9 +32,9 @@ import sys
 import time
 import torch
 from apex import amp
-from common import audio
 from common.audio_processing import griffin_lim
 from common.layers import TacotronSTFT
+from common.utils import save_wav
 from scipy.io.wavfile import write
 from tacotron2.loader import parse_tacotron2_args
 from tacotron2.loader import get_tacotron2_model
@@ -182,8 +182,8 @@ def main():
     mels = [mel[:, :length] for mel, length in zip(mels, mel_lengths)]
     mels = [mels[ids_sorted_decreasing.index(i)] for i in range(len(ids_sorted_decreasing))]
     magnitudes = stft.inv_mel_spectrogram(torch.cat(mels, axis=-1))
-    wav = griffin_lim(magnitudes, stft.stft_fn, 60)
-    audio.save_wav(wav, os.path.join(args.output_dir, 'eval.wav'))
+    wav = griffin_lim(magnitudes, stft.stft_fn)
+    save_wav(wav, os.path.join(args.output_dir, 'eval.wav'))
     np.save(os.path.join(args.output_dir, 'eval.npy'), np.concatenate(mels, axis=-1), allow_pickle=False)
 
 

@@ -26,7 +26,7 @@
 # *****************************************************************************
 
 import numpy as np
-from scipy.io.wavfile import read
+from scipy.io.wavfile import read, write
 from scipy import signal
 import math
 import torch
@@ -59,6 +59,23 @@ def load_wav_to_torch(path, max_value=32768):
     wav = np.load(path)
     wav = preemphasize(wav)
     return torch.FloatTensor(wav.astype(np.float32))
+
+
+def dc_notch_filter(wav):
+    # code from speex
+    notch_radius = 0.982
+    den = notch_radius ** 2 + 0.7 * (1 - notch_radius) ** 2
+    b = np.array([1, -2, 1]) * notch_radius
+    a = np.array([1, -2 * notch_radius, den])
+    return signal.lfilter(b, a, wav)
+
+
+def save_wav(wav, path, sr=22050):
+    wav = dc_notch_filter(wav)
+    f1 = 0.8 * 32768 / max(0.01, np.max(np.abs(wav)))
+    f2 = np.sign(wav) * np.power(np.abs(wav), 0.95)
+    wav = f1 * f2
+    write(path, sr, wav.astype(np.int16))
 
 
 def load_metadata(dirname, filename='train.txt', split="|"):
