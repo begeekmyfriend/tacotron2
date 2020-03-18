@@ -12,6 +12,7 @@ bash scripts/griffin_lim_synth.sh
 bash scripts/gta_synth.sh
 ```
 
-## Vocoder recommanded
+## Vocoder recommended
 [WaveRNN](https://github.com/begeekmyfriend/WaveRNN)
+
 [SqueezeWave](https://github.com/begeekmyfriend/SqueezeWave)
