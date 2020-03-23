@@ -156,7 +156,7 @@ def main():
                 wav = load_wav_to_torch(npy_path)
                 mel = stft.mel_spectrogram(wav.unsqueeze(0))
                 mel = mel.squeeze()
-                max_target_len = mel.size(1)
+                max_target_len = mel.size(1) - 1
                 max_target_len += args.n_frames_per_step - max_target_len % args.n_frames_per_step
                 padded_mel = np.pad(mel, [(0, 0), (0, max_target_len - mel.size(1))], mode='constant', constant_values=args.mel_pad_val)
                 target = padded_mel[:, ::args.n_frames_per_step]
@@ -164,7 +164,7 @@ def main():
                 target_lengths = torch.IntTensor([target.shape[1]])
                 outputs = model.infer(to_gpu(seqs).long(), to_gpu(seq_lens).int(), to_gpu(targets).float(), to_gpu(target_lengths).int())
                 _, mel_out, _, _ = [output.cpu() for output in outputs if output is not None]
-                mel_out = mel_out.squeeze()[:, :mel.size(-1)]
+                mel_out = mel_out.squeeze()[:, :mel.size(-1) - 1]
                 assert(mel_out.shape[-1] == wav.shape[-1] // args.hop_length)
                 fname = os.path.basename(npy_path)
                 np.save(os.path.join(args.output_dir, fname), mel_out, allow_pickle=False)
