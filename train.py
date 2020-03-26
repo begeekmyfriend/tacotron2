@@ -251,7 +251,7 @@ def main():
     writer = SummaryWriter(args.output_dir)
 
     if args.amp_run:
-        model, optimizer = amp.initialize(model, optimizer, opt_level='O0')
+        model, optimizer = amp.initialize(model, optimizer, opt_level='O1')
         if distributed_run:
             model = DDP(model)
 
