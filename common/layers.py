@@ -114,7 +114,7 @@ class TacotronSTFT(torch.nn.Module):
         -------
         mel_output: torch.FloatTensor of shape (B, n_mel_channels, T)
         """
-        mel = self.spectral_de_normalize(mel)
+        mel = self.spectral_de_normalize(mel.float())
         magnitudes = torch.matmul(self.inv_mel_basis, mel.data)
         magnitudes = torch.max(magnitudes.clone().detach().fill_(1e-10), magnitudes)
         return magnitudes.data

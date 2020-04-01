@@ -162,7 +162,7 @@ def main():
                 target = padded_mel[:, ::args.n_frames_per_step]
                 targets = torch.from_numpy(np.stack(target)).unsqueeze(0)
                 target_lengths = torch.IntTensor([target.shape[1]])
-                outputs = model.infer(to_gpu(seqs).long(), to_gpu(seq_lens).int(), to_gpu(targets).float(), to_gpu(target_lengths).int())
+                outputs = model.infer(to_gpu(seqs).long(), to_gpu(seq_lens).int(), to_gpu(targets).half(), to_gpu(target_lengths).int())
                 _, mel_out, _, _ = [output.cpu() for output in outputs if output is not None]
                 mel_out = mel_out.squeeze()[:, :mel.size(-1) - 1]
                 assert(mel_out.shape[-1] == wav.shape[-1] // args.hop_length)

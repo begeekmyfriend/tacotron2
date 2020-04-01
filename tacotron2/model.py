@@ -255,7 +255,7 @@ class Decoder(nn.Module):
 
         self.gate_layer = LinearNorm(decoder_rnn_dim + encoder_embedding_dim, n_frames_per_step, w_init_gain='sigmoid')
 
-    def initialize_decoder_states(self, memory, mask=None):
+    def initialize_decoder_states(self, memory, mask=None, inference=False):
         """ Initializes attention rnn states, decoder rnn states, attention
         weights, attention cumulative weights, attention context, stores memory
         PARAMS
@@ -268,9 +268,14 @@ class Decoder(nn.Module):
 
         self.h0 = torch.zeros(B, self.decoder_rnn_dim).cuda()
         self.c0 = torch.zeros(B, self.decoder_rnn_dim).cuda()
-
         self.h1 = torch.zeros(B, self.decoder_rnn_dim).cuda()
         self.c1 = torch.zeros(B, self.decoder_rnn_dim).cuda()
+
+        if inference:
+            self.h0 = self.h0.half()
+            self.c0 = self.c0.half()
+            self.h1 = self.h1.half()
+            self.c1 = self.c1.half()
 
         self.attention_weights = memory.new(B, MAX_TIME).zero_()
         self.attention_weights_cum = memory.new(B, MAX_TIME).zero_()
@@ -394,7 +399,7 @@ class Decoder(nn.Module):
         alignments: sequence of attention weights from the decoder
         """
         mask =~ get_mask_from_lengths(memory_lengths) if memory.size(0) > 1 else None
-        self.initialize_decoder_states(memory, mask)
+        self.initialize_decoder_states(memory, mask, inference=True)
 
         mel_lengths = torch.zeros([memory.size(0)], dtype=torch.int32)
         if torch.cuda.is_available():
@@ -447,7 +452,7 @@ class Decoder(nn.Module):
         prenet_outputs = self.prenet(decoder_inputs, inference=True)
 
         mask =~ get_mask_from_lengths(memory_lengths) if memory.size(0) > 1 else None
-        self.initialize_decoder_states(memory, mask)
+        self.initialize_decoder_states(memory, mask, inference=True)
 
         mel_outputs, gate_outputs, alignments = [], [], []
         # size - 1 for ignoring EOS synbol
