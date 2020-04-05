@@ -14,5 +14,5 @@ bash scripts/gta_synth.sh
 
 ## Vocoder recommended
 [WaveRNN](https://github.com/begeekmyfriend/WaveRNN)
-
+[WaveGlow](https://github.com/begeekmyfriend/WaveGlow)
 [SqueezeWave](https://github.com/begeekmyfriend/SqueezeWave)
