@@ -4,6 +4,8 @@ This repository provides a script and recipe to train Tacotron 2. The source is 
 
 ## Run the scripts
 ```shell
+# Preprocessing
+python preprocess.py
 # Training
 nohup bash scripts/train_tacotron2.sh &
 # Evaluation
@@ -14,5 +16,7 @@ bash scripts/gta_synth.sh
 
 ## Vocoder recommended
 [WaveRNN](https://github.com/begeekmyfriend/WaveRNN)
+
 [WaveGlow](https://github.com/begeekmyfriend/WaveGlow)
+
 [SqueezeWave](https://github.com/begeekmyfriend/SqueezeWave)
