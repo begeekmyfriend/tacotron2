@@ -84,10 +84,11 @@ class Attention(nn.Module):
         key = self.memory_layer(memory)
         # [B, 1, attn_dim]
         query = self.query_layer(query.unsqueeze(1))
-        # [B, T, attn_dim]
+        # [B, T_in, attn_dim]
         location_sensitive_weights = self.location_layer(attention_weights_cum)
         # score function
         energies = self.v(torch.tanh(query + location_sensitive_weights + key))
+        # [B, T_in]
         energies = energies.squeeze(-1)
 
         return energies
@@ -130,7 +131,7 @@ class Prenet(nn.Module):
                 x0 = x[0].unsqueeze(0)
                 mask = torch.bernoulli(x0.new(x0.size()).fill_(0.5))
                 mask = mask.expand(x.size())
-                x = x*mask*2
+                x = x * mask * 2
         else:
             for linear in self.layers:
                 x = F.dropout(F.relu(linear(x), inplace=True), p=0.5, training=True)
@@ -330,10 +331,12 @@ class Decoder(nn.Module):
         """
         x = torch.cat((prenet_output, self.attention_context), dim=-1)
         self.h0, self.c0 = self.lstm0(x, (self.h0, self.c0))
+        # [B, 1, decoder_dim]
         x = F.dropout(self.h0, self.p_decoder_dropout, self.training)
 
         x = torch.cat((x, self.attention_context), dim=-1)
         self.h1, self.c1 = self.lstm1(x, (self.h1, self.c1))
+        # [B, 1, decoder_dim]
         self.query = F.dropout(self.h1, self.p_decoder_dropout, self.training)
 
         attention_weights_cumulative = self.attention_weights_cum.unsqueeze(1)
@@ -375,7 +378,7 @@ class Decoder(nn.Module):
         self.initialize_decoder_states(memory, mask)
 
         mel_outputs, gate_outputs, alignments = [], [], []
-        # size - 1 for ignoring EOS synbol
+        # size - 1 for ignoring EOS symbol
         while len(mel_outputs) < decoder_inputs.size(0) - 1:
             prenet_output = prenet_outputs[len(mel_outputs)]
             mel_output, gate_output, attention_weights = self.decode(prenet_output)
@@ -455,7 +458,7 @@ class Decoder(nn.Module):
         self.initialize_decoder_states(memory, mask, inference=True)
 
         mel_outputs, gate_outputs, alignments = [], [], []
-        # size - 1 for ignoring EOS synbol
+        # size - 1 for ignoring EOS symbol
         while len(mel_outputs) < decoder_inputs.size(0) - 1:
             prenet_output = prenet_outputs[len(mel_outputs)]
             mel_output, gate_output, attention_weights = self.decode(prenet_output)
