@@ -271,11 +271,11 @@ class Decoder(nn.Module):
         self.h1 = torch.zeros(B, self.decoder_rnn_dim).cuda()
         self.c1 = torch.zeros(B, self.decoder_rnn_dim).cuda()
 
-        if inference:
-            self.h0 = self.h0.half()
-            self.c0 = self.c0.half()
-            self.h1 = self.h1.half()
-            self.c1 = self.c1.half()
+        # if inference:
+        #     self.h0 = self.h0.half()
+        #     self.c0 = self.c0.half()
+        #     self.h1 = self.h1.half()
+        #     self.c1 = self.c1.half()
 
         self.attention_weights = memory.new(B, MAX_TIME).zero_()
         self.attention_weights_cum = memory.new(B, MAX_TIME).zero_()

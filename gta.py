@@ -63,7 +63,7 @@ def load_and_setup_model(parser, args):
     model.eval()
 
     if args.amp_run:
-        model, _ = amp.initialize(model, [], opt_level='O3')
+        model, _ = amp.initialize(model, [], opt_level='O1')
 
     return model, args
 
