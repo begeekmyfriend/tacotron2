@@ -40,7 +40,7 @@ def parse_tacotron2_args(parent, add_help=False):
     # misc parameters
     parser.add_argument('--mask-padding', default=False, type=bool, help='Use mask padding')
     parser.add_argument('--n-mel-channels', default=80, type=int, help='Number of bins in mel-spectrograms')
-    parser.add_argument('--mel_pad_val', default=-5, type=float, help='Corresponding to silence')
+    parser.add_argument('--mel-pad-val', default=-4, type=float, help='Corresponding to silence')
 
     # symbols parameters
     global symbols

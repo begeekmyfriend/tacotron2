@@ -75,8 +75,8 @@ def _process_utterance(wav_dir, mel_dir, basename, wav_file, text, hparams):
 		wav = audio.trim_silence(wav)
 
 	# Compute the mel scale spectrogram from the wav
-	mel_spectrogram = audio.melspectrogram(wav).astype(np.float32)
-	mel_frames = mel_spectrogram.shape[1]
+	mel = audio.melspectrogram(wav).astype(np.float32)
+	mel_frames = mel.shape[1]
 
 	if mel_frames > hparams.max_mel_frames or len(text) > hparams.max_text_length:
 		return None
@@ -93,7 +93,7 @@ def _process_utterance(wav_dir, mel_dir, basename, wav_file, text, hparams):
 	# Write the spectrogram and audio to disk
 	filename = f'{basename}.npy'
 	np.save(os.path.join(wav_dir, filename), wav, allow_pickle=False)
-	np.save(os.path.join(mel_dir, filename), mel_spectrogram, allow_pickle=False)
+	np.save(os.path.join(mel_dir, filename), mel, allow_pickle=False)
 
 	# Return a tuple describing this training example
 	return (filename, time_steps, mel_frames, text)
