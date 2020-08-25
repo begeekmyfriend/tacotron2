@@ -12,6 +12,8 @@ class HParams(object):
         if len(string) > 0:
             overrides = [s.split("=") for s in string.split(",")]
             keys, values = zip(*overrides)
+            keys = list(map(str.strip, keys))
+            values = list(map(str.strip, values))
             for k in keys:
                 self.__dict__[k] = ast.literal_eval(values[keys.index(k)])
         return self
