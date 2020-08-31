@@ -22,4 +22,4 @@ bash scripts/gta_synth.sh
 [SqueezeWave](https://github.com/begeekmyfriend/SqueezeWave)
 
 ## Audio samples
-[One male and one female](https://github.com/begeekmyfriend/tacotron2/issues/1)
+[Two males and two females in Chinese](https://github.com/begeekmyfriend/tacotron2/issues/1)
