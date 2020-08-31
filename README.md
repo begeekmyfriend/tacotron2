@@ -20,3 +20,6 @@ bash scripts/gta_synth.sh
 [WaveGlow](https://github.com/begeekmyfriend/WaveGlow)
 
 [SqueezeWave](https://github.com/begeekmyfriend/SqueezeWave)
+
+## Audio samples
+[One male and one female](https://github.com/begeekmyfriend/tacotron2/issues/1)
