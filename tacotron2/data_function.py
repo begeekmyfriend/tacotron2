@@ -44,7 +44,7 @@ class TextMelDataset(torch.utils.data.Dataset):
     def __init__(self, args, anchor_dirs):
         self.speaker_num = len(anchor_dirs)
         self.meta_dirs = [os.path.join(args.dataset_path, anchor_dirs[i]) for i in range(self.speaker_num)]
-        self.metadatas = [load_metadata(meta_dir, load_mel_from_disk=args.load_mel_from_disk) for meta_dir in self.meta_dirs]
+        self.metadatas = [load_metadata(meta_dir) for meta_dir in self.meta_dirs]
         self.offsets = [0] * self.speaker_num
         self.text_cleaners = args.text_cleaners
         self.sampling_rate = args.sampling_rate
