@@ -78,11 +78,11 @@ def save_wav(wav, path, sr=22050):
     write(path, sr, wav.astype(np.int16))
 
 
-def load_metadata(dirname, filename='train.txt', split="|", load_mel_from_disk=False):
+def load_metadata(dirname, filename='train.txt', split="|"):
     with open(os.path.join(dirname, filename)) as f:
         def split_line(line):
             parts = line.strip().split(split)
-            wav_path = os.path.join(dirname, 'mels' if load_mel_from_disk else 'audio', parts[0])
+            wav_path = os.path.join(dirname, 'audio', parts[0])
             text = parts[-1]
             return wav_path, text
         return [split_line(line) for line in f.readlines()]
