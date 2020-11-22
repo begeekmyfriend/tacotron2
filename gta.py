@@ -152,7 +152,7 @@ def main():
             for npy_path, text in tqdm(metadata):
                 seq = text_to_sequence(text, speaker_id, ['basic_cleaners'])
                 seqs = torch.from_numpy(np.stack(seq)).unsqueeze(0)
-                seq_lens = torch.IntTensor([len(text)])
+                seq_lens = torch.IntTensor([len(seq)])
                 wav = load_wav_to_torch(npy_path)
                 mel = stft.mel_spectrogram(wav.unsqueeze(0))
                 mel = mel.squeeze()
